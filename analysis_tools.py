@@ -281,22 +281,21 @@ class WBA_trials ():
 
 class Condition():
     ''' condition used in the experiment which has a light index for each individual element'''
-    def __init__(self, elements, light_mod):
+    def __init__(self, elements, light_mod = 0):
         self.elements = elements
         self.light_mod = light_mod
 
-
 class Array_builder():
     ''' builds an array given condition objects in the correct order '''
-    def __init__(self, conditions):
+    def __init__(self, conditions, data_dir = './'):
         self.conditions = conditions
         self.num_tests =  n.array([len(condition.elements) for condition in self.conditions]).prod()
+        self.data_dir = data_dir
         self.get_data()
-        
+                
     def get_data(self):
-        self.d = WBA_trials('./', self.num_tests, n.arange(len(self.conditions))+ 2)
+        self.d = WBA_trials(self.data_dir, self.num_tests, n.arange(len(self.conditions))+ 2)
         self.trial_len = int(n.mean([n.mean(trial.ends- trial.starts) for trial in self.d]))
-        
         cond_el = [[i_element for i_element, element in enumerate(condition.elements)] for i_condition, condition in enumerate(self.conditions)]
         cond_el.insert(0, n.arange(self.d.num_trials))
         coords = n.stack(n.meshgrid(*cond_el), axis = len(self.conditions)+1)
