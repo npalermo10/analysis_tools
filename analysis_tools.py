@@ -281,13 +281,16 @@ class WBA_trials ():
 
 class Condition():
     ''' condition used in the experiment which has a light index for each individual element'''
-    def __init__(self, elements, light_mod = 0):
+    def __init__(self, elements, light_num, light_mod = 0):
         self.elements = elements
+        self.light_num = light_num
         self.light_mod = light_mod
 
 class Array_builder():
     ''' builds an array given condition objects in the correct order '''
     def __init__(self, conditions, data_dir = './'):
+        
+        conditions.sort(key=lambda x: x.light_num) # sort conditions based on light num
         self.conditions = conditions
         self.num_tests =  n.array([len(condition.elements) for condition in self.conditions]).prod()
         self.data_dir = data_dir
