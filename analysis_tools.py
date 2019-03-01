@@ -326,3 +326,26 @@ class Array_builder():
                 self.lpr[slices] = self.d.fetch_trials_data(*mod_coords_shaped[i_coord])
             except:
                 print(f"error loading lights index {mod_coords_shaped} into lpr. check that your light mods are correct and conditions are in the correct order. Is target array shape: {self.lpr.shape}?")
+
+class Hasty_plotter():
+    ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing'''
+    def __init__(self, data):
+        self.data = data
+        
+    def plot_avg_time_series(self, separate_colors_axis = 1, separate_plots_axis = 2,  x_axis = None, trials_axis = 0, start_t = 0, end_t = 1):
+        if x_axis == None:
+            x_axis = self.data.shape[-1]
+        mean = n.mean(self.data, axis = trials_axis)
+        sd_err = n.std(self.data, axis = trials_axis)/n.sqrt(self.data.shape[0])
+        separate_colors_axis = separate_colors_axis -1
+        separate_plots_axis = separate_plots_axis -1
+        
+        for plot_num in n.arange(mean.shape[separate_plots_axis]):
+            plt.subplot(mean.shape[separate_plots_axis], 1, plot_num + 1)
+            plt.axhline(0, color = 'k')
+            for color in n.arange(mean.shape[separate_colors_axis]):
+                plt.plot(mean[color, plot_num, int(x_axis*start_t):int(x_axis*end_t)])
+            
+        
+        
+        
