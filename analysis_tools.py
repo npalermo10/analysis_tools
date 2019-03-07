@@ -331,21 +331,69 @@ class Hasty_plotter():
     ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing'''
     def __init__(self, data):
         self.data = data
-        
-    def plot_avg_time_series(self, separate_colors_axis = 1, separate_plots_axis = 2,  x_axis = None, trials_axis = 0, start_t = 0, end_t = 1):
+                
+    def plot_time_series(self, colors_axis = None, colors_labels = None,  subplots_axis = None, sublots_labels = None,  x_axis = None, trials_axis = 0, start_t = 0, end_t = 1, plot_title = None):
         if x_axis == None:
             x_axis = self.data.shape[-1]
         mean = n.mean(self.data, axis = trials_axis)
         sd_err = n.std(self.data, axis = trials_axis)/n.sqrt(self.data.shape[0])
-        separate_colors_axis = separate_colors_axis -1
-        separate_plots_axis = separate_plots_axis -1
-        
-        for plot_num in n.arange(mean.shape[separate_plots_axis]):
-            plt.subplot(mean.shape[separate_plots_axis], 1, plot_num + 1)
-            plt.axhline(0, color = 'k')
-            for color in n.arange(mean.shape[separate_colors_axis]):
-                plt.plot(mean[color, plot_num, int(x_axis*start_t):int(x_axis*end_t)])
+        if not subplots_axis:
+            num_subplots = 1
+        else:
+            num_subplots = mean.shape[subplots_axis-1]
+        if not colors_axis:
+            num_colors = 1
+        else:     
+            num_colors = mean.shape[colors_axis -1]
+
+        plt.suptitle(f'{plot_title} - {self.data.shape[trials_axis]} flies')    
+        for plot_num in n.arange(num_subplots):
+            plt.subplot(num_subplots, 1, plot_num + 1)
+            plt.axhline(0, color = 'k', linestyle = '--')
+            plt.axvline(0, color = 'k', linestyle = '--')
+            for color in n.arange(num_colors):
+                if not subplots_axis:
+                    plt.plot(mean[color, int(x_axis*start_t):int(x_axis*end_t)])
+                    plt.fill_between(n.arange(int(x_axis*end_t) - int(x_axis*start_t)), mean[color, int(x_axis*start_t):int(x_axis*end_t)] + sd_err[color, int(x_axis*start_t):int(x_axis*end_t)],  mean[color, int(x_axis*start_t):int(x_axis*end_t)]- sd_err[color, int(x_axis*start_t):int(x_axis*end_t)], alpha = 0.3)
+                if not colors_axis:
+                    plt.plot(mean[plot_num, int(x_axis*start_t):int(x_axis*end_t)])
+                    plt.fill_between(n.arange(int(x_axis*end_t) - int(x_axis*start_t)), mean[ plot_num, int(x_axis*start_t):int(x_axis*end_t)] + sd_err[plot_num, int(x_axis*start_t):int(x_axis*end_t)],  mean[plot_num, int(x_axis*start_t):int(x_axis*end_t)]- sd_err[plot_num, int(x_axis*start_t):int(x_axis*end_t)], alpha = 0.3)                    
+                if subplots_axis and colors_axis:    
+                    plt.plot(mean[color, plot_num, int(x_axis*start_t):int(x_axis*end_t)])
+                    plt.fill_between(n.arange(int(x_axis*end_t) - int(x_axis*start_t)), mean[color, plot_num, int(x_axis*start_t):int(x_axis*end_t)] + sd_err[color, plot_num, int(x_axis*start_t):int(x_axis*end_t)],  mean[color, plot_num, int(x_axis*start_t):int(x_axis*end_t)]- sd_err[color, plot_num, int(x_axis*start_t):int(x_axis*end_t)], alpha = 0.3)
+
+    def plot_mean_resp(self, colors_axis = None, colors_labels = None,  subplots_axis = None, sublots_labels = None, x_axis = None, time_axis = None, trials_axis = 0, start_t = 0, end_t = 1, plot_title = None):
+        if time_axis == None:
+            time_axis = len(self.data.shape) - 1
+            frames = self.data.shape[-1]
+        else:    
+            frames = self.data.shape[time_axis]
             
-        
-        
-        
+        slices = [slice(None,None,None)]*len(self.data.shape)
+        slices[time_axis] = slice(frames*start_t, frames*end_t)
+        slices = tuple(slices)
+        mean = self.data[slices].mean(axis = time_axis).mean(axis = trials_axis)        
+        sd_err = n.std(self.data[slices].mean(axis = time_axis), axis= trials_axis)/n.sqrt(self.data.shape[0])
+        if not subplots_axis:
+            num_subplots = 1
+        else:
+            num_subplots = mean.shape[subplots_axis-1]
+        if not colors_axis:
+            num_colors = 1
+        else:     
+            num_colors = mean.shape[colors_axis -1]
+
+        plt.suptitle(f'{plot_title} - {self.data.shape[trials_axis]} flies')    
+        for plot_num in n.arange(num_subplots):
+            plt.subplot(num_subplots, 1, plot_num + 1)
+            plt.axhline(0, color = 'k', linestyle = '--')
+            plt.axvline(0, color = 'k', linestyle = '--')
+            for color in n.arange(num_colors):
+                if not subplots_axis and not colors_axis:
+                    plt.errorbar(n.arange(len(mean)), mean, yerr = sd_err)
+                if subplots_axis and not colors_axis:
+                    plt.errorbar(n.arange(len(mean[x_axis - 1])), mean[plot_num], yerr = sd_err[plot_num])
+                if colors_axis and not subplots_axis:    
+                    plt.errorbar(len(mean[x_axis - 1]), mean[color], yerr = sd_err[color])
+                if colors_axis and subplots_axis:
+                    plt.errorbar(len(mean[x_axis - 1]), mean[plot_num, color], yerr = sd_err[plot_num, color])
