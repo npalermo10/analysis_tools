@@ -352,26 +352,20 @@ class Hasty_plotter():
             plt.axhline(0, color = 'k', linestyle = '--')
             plt.axvline(0, color = 'k', linestyle = '--')
             for color in n.arange(num_colors):
-                mean2plot = []
-                std_err2plot = []
+                slices = []
+
                 if not subplots_axis and colors_axis:
                     slices = {colors_axis: slice(color, color+1, None), x_axis:slice(int(x_axis*start_t), int(x_axis*end_t), None)}
-                    slices = tuple(sorted(slices.values()))
-                    mean2plot = n.squeeze(mean[slices])
-                    std_err2plot = n.squeeze(sd_err[slices])
-                    
+                                    
                 if not colors_axis and subplots_axis:
                     slices = {subplots_axis: slice(plot_num, plot_num+1, None), x_axis:slice(int(x_axis*start_t), int(x_axis*end_t), None)}
-                    slices = tuple(sorted(slices.values()))
-                    mean2plot = n.squeeze(mean[slices])
-                    std_err2plot = n.squeeze(sd_err[slices])
-                                        
+                                                            
                 if subplots_axis and colors_axis:    
                     slices = {subplots_axis: slice(plot_num, plot_num+1, None), colors_axis:slice(color, color + 1, None), x_axis:slice(int(x_axis*start_t), int(x_axis*end_t), None)}
-                    slices = tuple(sorted(slices.values()))
-                    mean2plot = n.squeeze(mean[slices])
-                    std_err2plot = n.squeeze(sd_err[slices])
-                    
+                                        
+                slices = tuple(sorted(slices.values()))
+                mean2plot = n.squeeze(mean[slices])
+                std_err2plot = n.squeeze(sd_err[slices])
                 plt.plot(mean2plot)
                 plt.fill_between(n.arange(int(x_axis*end_t) - int(x_axis*start_t)), mean2plot + std_err2plot,  mean2plot- std_err2plot, alpha = 0.3)
                 
