@@ -352,16 +352,29 @@ class Hasty_plotter():
             plt.axhline(0, color = 'k', linestyle = '--')
             plt.axvline(0, color = 'k', linestyle = '--')
             for color in n.arange(num_colors):
-                if not subplots_axis:
-                    plt.plot(mean[color, int(x_axis*start_t):int(x_axis*end_t)])
-                    plt.fill_between(n.arange(int(x_axis*end_t) - int(x_axis*start_t)), mean[color, int(x_axis*start_t):int(x_axis*end_t)] + sd_err[color, int(x_axis*start_t):int(x_axis*end_t)],  mean[color, int(x_axis*start_t):int(x_axis*end_t)]- sd_err[color, int(x_axis*start_t):int(x_axis*end_t)], alpha = 0.3)
-                if not colors_axis:
-                    plt.plot(mean[plot_num, int(x_axis*start_t):int(x_axis*end_t)])
-                    plt.fill_between(n.arange(int(x_axis*end_t) - int(x_axis*start_t)), mean[ plot_num, int(x_axis*start_t):int(x_axis*end_t)] + sd_err[plot_num, int(x_axis*start_t):int(x_axis*end_t)],  mean[plot_num, int(x_axis*start_t):int(x_axis*end_t)]- sd_err[plot_num, int(x_axis*start_t):int(x_axis*end_t)], alpha = 0.3)                    
+                mean2plot = []
+                std_err2plot = []
+                if not subplots_axis and colors_axis:
+                    slices = {colors_axis: slice(color, color+1, None), x_axis:slice(int(x_axis*start_t), int(x_axis*end_t), None)}
+                    slices = tuple(sorted(slices.values()))
+                    mean2plot = n.squeeze(mean[slices])
+                    std_err2plot = n.squeeze(sd_err[slices])
+                    
+                if not colors_axis and subplots_axis:
+                    slices = {subplots_axis: slice(plot_num, plot_num+1, None), x_axis:slice(int(x_axis*start_t), int(x_axis*end_t), None)}
+                    slices = tuple(sorted(slices.values()))
+                    mean2plot = n.squeeze(mean[slices])
+                    std_err2plot = n.squeeze(sd_err[slices])
+                                        
                 if subplots_axis and colors_axis:    
-                    plt.plot(mean[color, plot_num, int(x_axis*start_t):int(x_axis*end_t)])
-                    plt.fill_between(n.arange(int(x_axis*end_t) - int(x_axis*start_t)), mean[color, plot_num, int(x_axis*start_t):int(x_axis*end_t)] + sd_err[color, plot_num, int(x_axis*start_t):int(x_axis*end_t)],  mean[color, plot_num, int(x_axis*start_t):int(x_axis*end_t)]- sd_err[color, plot_num, int(x_axis*start_t):int(x_axis*end_t)], alpha = 0.3)
-
+                    slices = {subplots_axis: slice(plot_num, plot_num+1, None), colors_axis:slice(color, color + 1, None), x_axis:slice(int(x_axis*start_t), int(x_axis*end_t), None)}
+                    slices = tuple(sorted(slices.values()))
+                    mean2plot = n.squeeze(mean[slices])
+                    std_err2plot = n.squeeze(sd_err[slices])
+                    
+                plt.plot(mean2plot)
+                plt.fill_between(n.arange(int(x_axis*end_t) - int(x_axis*start_t)), mean2plot + std_err2plot,  mean2plot- std_err2plot, alpha = 0.3)
+                
     def plot_mean_resp(self, colors_axis = None, colors_labels = None,  subplots_axis = None, sublots_labels = None, x_axis = None, time_axis = None, trials_axis = 0, start_t = 0, end_t = 1, plot_title = None):
         if time_axis == None:
             time_axis = len(self.data.shape) - 1
