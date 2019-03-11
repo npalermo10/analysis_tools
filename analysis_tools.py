@@ -336,19 +336,20 @@ class Hasty_plotter():
         frames = 0
         if x_axis == None:
             frames = self.data.shape[-1]
+            x_axis = len(self.data.shape)
             
         else:
             frames = self.data.shape[x_axis]
         mean = n.mean(self.data, axis = trials_axis)
         sd_err = n.std(self.data, axis = trials_axis)/n.sqrt(self.data.shape[0])
-        if not subplots_axis:
+        if subplots_axis == None:
             num_subplots = 1
         else:
-            num_subplots = mean.shape[subplots_axis-1]
-        if not colors_axis:
+            num_subplots = self.data.shape[subplots_axis]
+        if colors_axis == None:
             num_colors = 1
         else:     
-            num_colors = mean.shape[colors_axis -1]
+            num_colors = self.data.shape[colors_axis]
 
         plt.suptitle(f'{plot_title} - {self.data.shape[trials_axis]} flies')    
         for plot_num in n.arange(num_subplots):
@@ -357,13 +358,14 @@ class Hasty_plotter():
             plt.axvline(0, color = 'k', linestyle = '--')
             for color in n.arange(num_colors):
                 slices = []
-                if not subplots_axis and colors_axis:
+                if subplots_axis==None and colors_axis != None:
+                    import pdb; pdb.set_trace()
                     slices = {colors_axis: slice(color, color+1, None), x_axis:slice(int(frames*start_t), int(frames*end_t), None)}
                                     
-                if not colors_axis and subplots_axis:
+                if colors_axis == None and subplots_axis != None:
                     slices = {subplots_axis: slice(plot_num, plot_num+1, None), x_axis:slice(int(frames*start_t), int(frames*end_t), None)}
                                                             
-                if subplots_axis and colors_axis:    
+                if subplots_axis != None and colors_axis != None:    
                     slices = {subplots_axis: slice(plot_num, plot_num+1, None), colors_axis:slice(color, color + 1, None), x_axis:slice(int(frames*start_t), int(frames*end_t), None)}
 
                 slices =  tuple([value for (key, value) in sorted(slices.items())])
@@ -419,7 +421,7 @@ class Hasty_plotter():
             frames = self.data.shape[time_axis]
        
         mean = self.data.mean(axis = time_axis).mean(axis = trials_axis)
-        if y_axis == x_axis - 1:
+        if y_axis < x_axis:
             mean = mean.T
         mean = mean[:, ::-1]
         plt.imshow(mean)
