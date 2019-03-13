@@ -329,10 +329,11 @@ class Array_builder():
 
 class Hasty_plotter():
     ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing'''
-    def __init__(self, data):
+    def __init__(self, data, plot_title= None):
         self.data = data
+        self.plot_title = plot_title
                 
-    def plot_time_series(self, colors_axis = None, colors_labels = None,  subplots_axis = None, sublots_labels = None,  x_axis = None, trials_axis = 0, start_t = 0, end_t = 1, plot_title = None):
+    def plot_time_series(self, colors_axis = None, colors_labels = None,  subplots_axis = None, sublots_labels = None,  x_axis = None, trials_axis = 0, start_t = 0, end_t = 1):
         frames = 0
         if x_axis == None:
             frames = self.data.shape[-1]
@@ -351,7 +352,7 @@ class Hasty_plotter():
         else:     
             num_colors = self.data.shape[colors_axis]
 
-        plt.suptitle(f'{plot_title} - {self.data.shape[trials_axis]} flies')    
+        plt.suptitle(f'{self.plot_title} - {self.data.shape[trials_axis]} flies')    
         for plot_num in n.arange(num_subplots):
             plt.subplot(num_subplots, 1, plot_num + 1)
             plt.axhline(0, color = 'k', linestyle = '--')
@@ -359,7 +360,6 @@ class Hasty_plotter():
             for color in n.arange(num_colors):
                 slices = []
                 if subplots_axis==None and colors_axis != None:
-                    import pdb; pdb.set_trace()
                     slices = {colors_axis: slice(color, color+1, None), x_axis:slice(int(frames*start_t), int(frames*end_t), None)}
                                     
                 if colors_axis == None and subplots_axis != None:
@@ -374,7 +374,7 @@ class Hasty_plotter():
                 plt.plot(mean2plot)
                 plt.fill_between(n.arange(int(frames*end_t) - int(frames*start_t)), mean2plot + std_err2plot,  mean2plot- std_err2plot, alpha = 0.3)
                 
-    def plot_mean_resp(self, colors_axis = None, colors_labels = None,  subplots_axis = None, sublots_labels = None, x_axis = None, time_axis = None, trials_axis = 0, start_t = 0, end_t = 1, plot_title = None):
+    def plot_mean_resp(self, colors_axis = None, colors_labels = None,  subplots_axis = None, sublots_labels = None, x_axis = None, time_axis = None, trials_axis = 0, start_t = 0, end_t = 1):
         if time_axis == None:
             time_axis = len(self.data.shape) - 1
             frames = self.data.shape[-1]
@@ -395,7 +395,7 @@ class Hasty_plotter():
         else:     
             num_colors = mean.shape[colors_axis -1]
 
-        plt.suptitle(f'{plot_title} - {self.data.shape[trials_axis]} flies')    
+        plt.suptitle(f'{self.plot_title} - {self.data.shape[trials_axis]} flies')    
         for plot_num in n.arange(num_subplots):
             plt.subplot(num_subplots, 1, plot_num + 1)
             plt.axhline(0, color = 'k', linestyle = '--')
@@ -412,7 +412,7 @@ class Hasty_plotter():
                     plt.errorbar(n.arange(len(mean[x_axis - 1])) + offset, mean[plot_num, color], yerr = sd_err[plot_num, color])
                 offset += 0.01
 
-    def plot_mean_resp_heatmap(self, x_axis = None, x_axis_labels = None, y_axis = None, y_axis_labels = None, time_axis = None, trials_axis = 0, start_t = 0, end_t = 1, plot_title = None):
+    def plot_mean_resp_heatmap(self, x_axis = None, x_axis_labels = None, y_axis = None, y_axis_labels = None, time_axis = None, trials_axis = 0, start_t = 0, end_t = 1, col_map = 'viridis'):
         frames = 0
         if time_axis == None:
             time_axis = len(self.data.shape) - 1
@@ -424,6 +424,7 @@ class Hasty_plotter():
         if y_axis < x_axis:
             mean = mean.T
         mean = mean[:, ::-1]
-        plt.imshow(mean)
-        plt.suptitle(f'{plot_title} - {self.data.shape[trials_axis]} flies')    
+        img = plt.imshow(mean, cmap = col_map)
+        plt.colorbar(img, cmap = col_map)
+        plt.suptitle(f'{self.plot_title} - {self.data.shape[trials_axis]} flies')    
         
