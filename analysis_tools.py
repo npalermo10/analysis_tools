@@ -412,7 +412,7 @@ class Hasty_plotter():
                     plt.errorbar(n.arange(len(mean[x_axis - 1])) + offset, mean[plot_num, color], yerr = sd_err[plot_num, color])
                 offset += 0.01
 
-    def plot_mean_resp_heatmap(self, x_axis = None, x_axis_labels = None, y_axis = None, y_axis_labels = None, time_axis = None, trials_axis = 0, start_t = 0, end_t = 1, col_map = 'viridis'):
+    def plot_mean_resp_heatmap(self, x_axis = None, x_axis_label = None, x_ticks= None, y_axis = None, y_axis_label = None, y_ticks = None,  time_axis = None, trials_axis = 0, start_t = 0, end_t = 1, col_map = 'viridis', center_zero = False):
         frames = 0
         if time_axis == None:
             time_axis = len(self.data.shape) - 1
@@ -424,7 +424,29 @@ class Hasty_plotter():
         if y_axis < x_axis:
             mean = mean.T
         mean = mean[:, ::-1]
-        img = plt.imshow(mean, cmap = col_map)
+        plot_max = mean.max()
+        plot_min = mean.min()
+        if center_zero:
+           plot_max = n.abs(mean).max()
+           plot_min = -plot_max
+            
+        img = plt.imshow(mean, cmap = col_map, vmin = plot_min, vmax = plot_max)
         plt.colorbar(img, cmap = col_map)
-        plt.suptitle(f'{self.plot_title} - {self.data.shape[trials_axis]} flies')    
+        plt.suptitle(f'{self.plot_title} - {self.data.shape[trials_axis]} flies')
+        if x_ticks is None:
+            pass
+        else:
+            ticks = n.arange(self.data.shape[x_axis])
+            plt.xticks(ticks, x_ticks)
+        if y_ticks is None:
+            pass
+        else:
+            ticks = n.arange(self.data.shape[y_axis])
+            plt.yticks(ticks, y_ticks[::-1])
+
+
+        if x_axis_label:
+           plt.xlabel(x_axis_label) 
+        if y_axis_label:
+           plt.ylabel(y_axis_label) 
         
