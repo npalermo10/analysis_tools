@@ -35,7 +35,7 @@ class WBA_trial():
         bounds = self.edge_inds[ind_chans[0]][0][n.where(self.edge_inds[ind_chans[0]][1]==nvals)]
         self.starts = bounds[::2]
         self.ends = bounds[1::2]
-        assert self.starts == self.ends, "Starts are not equal to ends. Data not used."
+        assert len(self.starts) == len(self.ends), "Starts are not equal to ends. Data not used."
         self.num_tests = len(self.starts)
         # self.count_flashes()
         self.set_return()
