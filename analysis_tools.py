@@ -35,7 +35,7 @@ class WBA_trial():
         bounds = self.edge_inds[ind_chans[0]][0][n.where(self.edge_inds[ind_chans[0]][1]==nvals)]
         self.starts = bounds[::2]
         self.ends = bounds[1::2]
-        assert len(self.starts) == len(self.ends), "Starts are not equal to ends. Data not used."
+        assert len(self.starts) == len(self.ends), "Starts amt are not equal to ends amt. Data not used."
         self.num_tests = len(self.starts)
         # self.count_flashes()
         self.set_return()
@@ -328,12 +328,40 @@ class Array_builder():
             except:
                 print(f"error loading lights index {mod_coords_shaped} into lpr. check that your light mods are correct and conditions are in the correct order. Is target array shape: {self.lpr.shape}?")
 
+class Data_handler():
+    ''' this class gets the mean and std err for data. Takes either data array or list. Also performs hasty stats.'''
+    def __init__(self, data, trials_axis = 0, time_axis = -1):
+        self.data = data
+        self.trials_axis = trials_axis
+        self.time_axis = time_axis
+        self.is_list = False
+        if isinstance(self.data, list):
+            self.is_list = True ##handling of lists is different than
+        self.flat_mean = [] # mean along time axis
+        self.flat_se = [] # se along time axis
+        self.mean = [] # mean of entire time series
+        self.se = [] # se of entire time searies
+
+    def calc_means_se(self):
+        if self.is_list:
+            flat_means = []
+            flat_ses = []
+            means = []
+            ses = []
+            for d in self.data:
+                means.append(d.mean(axis = self.trials_axis))
+                se.append(d.std(axis = self.trials_axis))
+        else:
+            self.mean = self.data.mean(axis = trials_axis)
+            self.se = self.data.std(axis = trials_axis)/sqrt(shape(self.data)[trials_axis])
+            self.flat_mean = self.data.mean(axis = time_axis)
+            
 class Hasty_plotter():
-    ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing'''
+    ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing.'''
     def __init__(self, data, plot_title= None):
         self.data = data
         self.plot_title = plot_title
-                
+                       
     def plot_time_series(self, colors_axis = None, colors_labels = None,  subplots_axis = None, sublots_labels = None,  x_axis = None, trials_axis = 0, start_t = 0, end_t = 1):
         frames = 0
         if x_axis == None:
