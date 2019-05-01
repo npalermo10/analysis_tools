@@ -64,10 +64,23 @@ class WBA_trial():
             out.append(self.wba[(zero + self.start_pos):(zero + self.end_pos)])
         return n.array(out)
 
-    def fetch_trial_data(self, *args):
+    def fetch_trial_raw_data(self, light_channel, *args):
         args = n.array(args).flatten()
         # for each indexing channel, where do we match the args
         locations = [self.edge_counts[self.ind_chans[i]] == args[i] for i in range(len(args))]
+        # where are the matches always true
+        self.locations = locations
+        locations = n.where(n.product(locations, 0))
+        if len(locations[0])==0: print ('no index matches')
+        out = []
+        for zero in self.zero_inds[locations]:
+            out.append(self.data[light_channel + 2][(zero + self.start_pos):(zero + self.end_pos)])
+        return n.array(out)
+
+    def fetch_trial_data(self, *args):
+        to_match = n.array(args).flatten()
+        # for each indexing channel, where do we match the args
+        locations = [self.edge_counts[self.ind_chans[i]] == to_match[i] for i in n.arange(len(to_match))]
         # where are the matches always true
         self.locations = locations
         locations = n.where(n.product(locations, 0))
@@ -250,6 +263,17 @@ class WBA_trials ():
         out = trial.fetch_trial_data(*trial_args)[0]
         return out
 
+    def fetch_trials_raw_data(self, *args):
+        self.a = args
+        trial = self.trials.__getitem__(self.a[1])
+        
+        trial_args = n.hstack([self.a[0], self.a[2:]])
+        if self.debug:
+            print ('getitem {}'.format(trial))
+            
+        out = trial.fetch_trial_raw_data(*trial_args)[0]
+        return out
+
     def response(self, test_inds=[0], bounds=[50,100],
                  ref_bounds=None, neg_test_inds=None):
         return n.array([trial.response(test_inds, bounds, ref_bounds, neg_test_inds)
@@ -289,12 +313,13 @@ class Condition():
 
 class Array_builder():
     ''' builds an array given condition objects in the correct order '''
-    def __init__(self, conditions, data_dir = './'):
+    def __init__(self, conditions, data_dir = './', raw_channels = [0,1,2,3]):
         
         conditions.sort(key=lambda x: x.light_num) # sort conditions based on light num
         self.conditions = conditions
         self.num_tests =  n.array([len(condition.elements) for condition in self.conditions]).prod()
         self.data_dir = data_dir
+        self.raw_channels = raw_channels
         self.get_data()
                 
     def get_data(self):
@@ -311,15 +336,24 @@ class Array_builder():
         mod_coords_shaped = mod_coords.reshape((-1, len(self.conditions)+1))
 
         self.lmr = n.zeros(n.hstack([self.d.num_trials, n.array([len(condition.elements) for condition in self.conditions]), self.trial_len]))
+
+        self.raw_channel_data = n.array([n.zeros(n.hstack([self.d.num_trials, n.array([len(condition.elements) for condition in self.conditions]), self.trial_len])) for channel in self.raw_channels])
         self.d.set_return(start_pos=0, end_pos=self.trial_len)
         for i_coord, coord in enumerate(coords_shaped):
             slices = tuple([slice(c, c+1, None) for i_c, c in enumerate(coord)])
             try:
                 self.lmr[slices] = self.d.fetch_trials_data(*mod_coords_shaped[i_coord])
+                
             except:
                 print(f"error loading lights index {mod_coords_shaped} into lmr. check that your light mods are correct and conditions are in the correct order. Is target array shape: {self.lmr.shape}?")
-                
+            try:
+                for i_channel, channel in enumerate(self.raw_channels):
+                    self.raw_channel_data[i_channel][slices] = self.d.fetch_trials_raw_data(channel, *mod_coords_shaped[i_coord])
+
+            except:
+                print(f'error importing raw data channel')
         self.lpr = n.zeros(n.hstack([self.d.num_trials, n.array([len(condition.elements) for condition in self.conditions]), self.trial_len]))
+                
         self.d.set_return(returned_value= 'lpr', start_pos=0, end_pos=self.trial_len)
         for i_coord, coord in enumerate(coords_shaped):
             slices = tuple([slice(c, c+1, None) for i_c, c in enumerate(coord)])
