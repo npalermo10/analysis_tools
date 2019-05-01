@@ -435,12 +435,17 @@ class Hasty_plotter():
                     plt.errorbar(n.arange(len(mean)), mean, yerr = sd_err)
                 if subplots_axis and not colors_axis:
                     plt.errorbar(n.arange(len(mean[x_axis - 1])) + offset, mean[plot_num], yerr = sd_err[plot_num])
-                if colors_axis and not subplots_axis:    
-                    plt.errorbar(n.arange(len(mean[x_axis - 1])) + offset, mean[color], yerr = sd_err[color])
+                if colors_axis and not subplots_axis:
+                    slices = [slice(None,None,None)]*len(self.data.shape)
+                    slices[colors_axis] = slice(color, color+1, 1)
+                    slices[x_axis] = slice(self.data.shape[x_axis])
+                    slices = tuple([s for s in slices if s != slice(None, None, None)])
+                    plt.errorbar(n.arange(self.data.shape[x_axis]) + offset, mean[slices].flatten(), yerr = sd_err[slices].flatten())
                 if colors_axis and subplots_axis:
                     plt.errorbar(n.arange(len(mean[x_axis - 1])) + offset, mean[plot_num, color], yerr = sd_err[plot_num, color])
                 offset += 0.01
 
+                
     def plot_mean_resp_heatmap(self, x_axis = None, x_axis_label = None, x_ticks= None, y_axis = None, y_axis_label = None, y_ticks = None,  time_axis = None, trials_axis = 0, start_t = 0, end_t = 1, col_map = 'viridis', center_zero = False):
         frames = 0
         if time_axis == None:
