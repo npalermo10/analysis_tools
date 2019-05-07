@@ -437,7 +437,7 @@ class Hasty_plotter():
                 plt.plot(mean2plot)
                 plt.fill_between(n.arange(int(frames*end_t) - int(frames*start_t)), mean2plot + std_err2plot,  mean2plot- std_err2plot, alpha = 0.3)
                 
-    def plot_mean_resp(self, colors_axis = None, colors_labels = None,  subplots_axis = None, sublots_labels = None, x_axis = None, time_axis = None, trials_axis = 0, start_t = 0, end_t = 1):
+    def plot_mean_resp(self, colors_axis = None, colors_labels = None,  subplots_axis = None, sublots_labels = None, x_axis = None, x_ticks = [], x_label = [], time_axis = None, trials_axis = 0, start_t = 0, end_t = 1):
         if time_axis == None:
             time_axis = len(self.data.shape) - 1
             frames = self.data.shape[-1]
@@ -464,6 +464,8 @@ class Hasty_plotter():
             plt.axhline(0, color = 'k', linestyle = '--')
             plt.axvline(0, color = 'k', linestyle = '--')
             offset = 0.02
+            plt.xticks(n.arange(self.data.shape[x_axis]), x_ticks)
+            plt.xlabel(x_label)
             for color in n.arange(num_colors):                
                 if not subplots_axis and not colors_axis:
                     plt.errorbar(n.arange(len(mean)), mean, yerr = sd_err)
