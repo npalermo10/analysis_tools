@@ -64,7 +64,7 @@ class WBA_trial():
             out.append(self.wba[(zero + self.start_pos):(zero + self.end_pos)])
         return n.array(out)
 
-    def fetch_trial_raw_data(self, light_channel, *args):
+    def fetch_trial_raw_data(self, channel, *args):
         args = n.array(args).flatten()
         # for each indexing channel, where do we match the args
         locations = [self.edge_counts[self.ind_chans[i]] == args[i] for i in range(len(args))]
@@ -74,7 +74,7 @@ class WBA_trial():
         if len(locations[0])==0: print ('no index matches')
         out = []
         for zero in self.zero_inds[locations]:
-            out.append(self.data[light_channel + 2][(zero + self.start_pos):(zero + self.end_pos)])
+            out.append(self.data[channel][(zero + self.start_pos):(zero + self.end_pos)])
         return n.array(out)
 
     def fetch_trial_data(self, *args):
@@ -324,6 +324,7 @@ class Array_builder():
                 
     def get_data(self):
         self.d = WBA_trials(self.data_dir, self.num_tests, n.arange(len(self.conditions))+ 2)
+
         self.trial_len = int(n.mean([n.mean(trial.ends- trial.starts) for trial in self.d]))
         cond_el = [[i_element for i_element, element in enumerate(condition.elements)] for i_condition, condition in enumerate(self.conditions)]
         cond_el.insert(0, n.arange(self.d.num_trials))
