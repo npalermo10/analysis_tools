@@ -346,7 +346,7 @@ class Array_builder():
                 self.lmr[slices] = self.d.fetch_trials_data(*mod_coords_shaped[i_coord])
                 
             except:
-                print(f"error loading lights index {mod_coords_shaped} into lmr. check that your light mods are correct and conditions are in the correct order. Is target array shape: {self.lmr.shape}?")
+               print(f"error loading coordinate: {coord} into lights index {mod_coords_shaped[i_coord]} into lmr. check that your light mods are correct and conditions are in the correct order. Is target array shape: {self.lmr.shape}? If not there might be a problem with file: {self.d[coord[0]]}")
             try:
                 for i_channel, channel in enumerate(self.raw_channels):
                     self.raw_channel_data[i_channel][slices] = self.d.fetch_trials_raw_data(channel, *mod_coords_shaped[i_coord])
@@ -361,7 +361,8 @@ class Array_builder():
             try:
                 self.lpr[slices] = self.d.fetch_trials_data(*mod_coords_shaped[i_coord])
             except:
-                print(f"error loading lights index {mod_coords_shaped} into lpr. check that your light mods are correct and conditions are in the correct order. Is target array shape: {self.lpr.shape}?")
+                print(f"error loading coordinate: {coord} into lights index {mod_coords_shaped[i_coord]} into lpr. check that your light mods are correct and conditions are in the correct order. Is target array shape: {self.lpr.shape}? If not there might be a problem with file: {self.d[coord[0]]}")
+            
 
 class Data_handler():
     ''' this class gets the mean and std err for data. Takes either data array or list. Also performs hasty stats.'''
