@@ -439,7 +439,7 @@ class Hasty_plotter():
                 plt.plot(mean2plot)
                 plt.fill_between(n.arange(int(frames*end_t) - int(frames*start_t)), mean2plot + std_err2plot,  mean2plot- std_err2plot, alpha = 0.3)
                 
-    def plot_mean_resp(self, colors_axis = None, colors_labels = None,  subplots_axis = None, sublots_labels = None, x_axis = None, x_ticks = [], x_label = [], time_axis = None, trials_axis = 0, start_t = 0, end_t = 1):
+    def plot_mean_resp(self, colors_axis = None, colors_labels = None,  subplots_axis = None, subplots_labels = None, x_axis = None, x_ticks = [], x_label = [], time_axis = None, trials_axis = 0, start_t = 0, end_t = 1):
         if time_axis == None:
             time_axis = len(self.data.shape) - 1
             frames = self.data.shape[-1]
@@ -462,25 +462,35 @@ class Hasty_plotter():
 
         plt.suptitle(f'{self.plot_title} - {self.data.shape[trials_axis]} flies')    
         for plot_num in n.arange(num_subplots):
-            plt.subplot(num_subplots, 1, plot_num + 1)
+            ax = plt.subplot(num_subplots, 1, plot_num + 1)
             plt.axhline(0, color = 'k', linestyle = '--')
             plt.axvline(0, color = 'k', linestyle = '--')
             offset = 0.02
             plt.xticks(n.arange(self.data.shape[x_axis]), x_ticks)
             plt.xlabel(x_label)
+            if colors_axis and len(colors_labels)>0:
+                patches =[mpatches.Patch(color = "C" + str(color), label = str(colors_labels[color])) for color in n.arange(num_colors)]
+                plt.legend(handles=patches)
+
             for color in n.arange(num_colors):                
                 if not subplots_axis and not colors_axis:
-                    plt.errorbar(n.arange(len(mean)), mean, yerr = sd_err)
+                    plt.errorbar(n.arange(len(mean)), mean, yerr = sd_err, marker = 'o', ms = 9.0)
                 if subplots_axis and not colors_axis:
-                    plt.errorbar(n.arange(len(mean[x_axis - 1])) + offset, mean[plot_num], yerr = sd_err[plot_num])
+                    ax.set_title(str(subplots_labels[plot_num]))
+                    slices = [slice(None,None,None)]*len(self.data.shape)
+                    slices[subplots_axis] = slice(plot_num, plot_num+1, 1)
+                    slices[x_axis] = slice(self.data.shape[x_axis])
+                    slices = tuple([s for s in slices if s != slice(None, None, None)])
+                    plt.errorbar(n.arange(self.data.shape[x_axis]) + offset, mean[slices].flatten(), yerr = sd_err[slices].flatten(), marker = 'o', ms = 9.0)
+                    
                 if colors_axis and not subplots_axis:
                     slices = [slice(None,None,None)]*len(self.data.shape)
                     slices[colors_axis] = slice(color, color+1, 1)
                     slices[x_axis] = slice(self.data.shape[x_axis])
                     slices = tuple([s for s in slices if s != slice(None, None, None)])
-                    plt.errorbar(n.arange(self.data.shape[x_axis]) + offset, mean[slices].flatten(), yerr = sd_err[slices].flatten())
+                    plt.errorbar(n.arange(self.data.shape[x_axis]) + offset, mean[slices].flatten(), yerr = sd_err[slices].flatten(), marker = 'o', ms = 9.0)
                 if colors_axis and subplots_axis:
-                    plt.errorbar(n.arange(len(mean[x_axis - 1])) + offset, mean[plot_num, color], yerr = sd_err[plot_num, color])
+                    plt.errorbar(n.arange(len(mean[x_axis - 1])) + offset, mean[plot_num, color], yerr = sd_err[plot_num, color], marker = 'o', ms = 9.0)
                 offset += 0.01
 
                 
