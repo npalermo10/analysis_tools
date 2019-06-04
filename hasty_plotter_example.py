@@ -18,8 +18,11 @@ plotter = analysis_tools.Hasty_plotter(data = lmr, plot_title = 'example plots',
 # " x_axis" is the axis which will represent the x axis of each subplot
 # for 2D heatmaps you need a y_axis as well
 
-# plotter.plot_mean_resp(colors_axis = 2, colors_labels = ['cold', 'warm'], subplots_axis = 1, subplots_labels = ['slow', 'med', 'fast'], x_axis = 3, x_ticks = x_axis_labels, x_label = "magnitude")
+plotter.plot_mean_resp(colors_axis = 2, colors_labels = ['cold', 'warm'], subplots_axis = 1, subplots_labels = ['slow', 'med', 'fast'], x_axis = 3, x_ticks = x_axis_labels, x_label = "magnitude")
 
-plotter.plot_mean_resp_heatmap(x_axis = 2, x_ticks = ['cold', 'warm'], y_axis = 1, subplots_axis = 3, subplots_labels = x_axis_labels, y_ticks = ['slow', 'med', 'fast'], x_label = "magnitude", cmap = 'viridis')
+plotter.plot_mean_resp_heatmap(x_axis = 3, x_ticks = x_axis_labels, y_axis = 1, subplots_axis = 2, subplots_labels = ['cold', 'warm'], y_ticks = ['slow', 'med', 'fast'], x_label = "magnitude", cmap = 'viridis')
 
+# plotter.plot_time_series(colors_axis = 2, colors_labels = ['cold', 'warm'], subplots_axis = 1, subplots_labels = ['cold', 'warm'], # y_ticks = ['slow', 'med', 'fast'],
+                         # x_label = "magnitude"
+# )
 

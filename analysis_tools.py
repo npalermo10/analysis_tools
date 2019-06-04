@@ -493,53 +493,50 @@ class Hasty_plotter():
                 plt.errorbar(n.arange(len_x_axis) + offset, mean[slices].flatten(), yerr = sd_err[slices].flatten(), marker = 'o', ms = 9.0)
                 offset += len_x_axis*0.005
 
-                
-    # def plot_mean_resp_heatmap(self, x_axis = None, x_label = None, x_ticks= None, y_axis = None, y_label = None, y_ticks = None,  subplots_axis = None, subplots_labels = None, start_t = 0, end_t = 1, center_zero = False, cmap = 'viridis'):
-    #     slices = [slice(None,None,None)]*len(self.data.shape)
-    #     slices[self.time_axis] = slice(self.frames*start_t, self.frames*end_t)
-    #     slices = tuple(slices)
-    #     mean = self.data[slices].mean(axis = self.time_axis).mean(axis = self.trials_axis)        
-    #     if not subplots_axis:
-    #         num_subplots = 1
-    #     else:
-    #         num_subplots = mean.shape[subplots_axis-1]    
-    #     if y_axis < x_axis:
-            
-    #         if subplots_axis:
-    #         mean = mean.T
-    #     if y_axis < x_axis and subplots_axis:
-    #         mean[subplots_axis-1] = mean[subplots_axis-1].T
-    #     mean = mean[:, ::-1]
-    #     plot_max = mean.max()
-    #     plot_min = mean.min()
-    #     if center_zero:
-    #         plot_max = n.abs(mean).max()
-    #         plot_min = -plot_max
+        self.num_figures += 1
+        
+    def plot_mean_resp_heatmap(self, x_axis = None, x_label = None, x_ticks= None, y_axis = None, y_label = None, y_ticks = None,  subplots_axis = None, subplots_labels = None, start_t = 0, end_t = 1, center_zero = False, cmap = 'viridis'):
+        assert x_axis, "can't plot heatmap without x axis"
+        assert y_axis, "can't plot heatmap without y axis"
+        plt.figure(self.num_figures)
+        data = []
+                    
+        if subplots_axis:
+            data = self.data.transpose(self.trials_axis, subplots_axis, y_axis, x_axis, self.time_axis)
+        else:
+            subplots_axis = len(self.data.shape)
+            data = n.expand_dims(self.data, axis = -1)
+            data = data.transpose(self.trials_axis, subplots_axis, y_axis, x_axis, self.time_axis)
+        mean = data.mean(axis = 0)[..., self.frames*start_t:self.frames*end_t].mean(axis = -1)    
+        num_subplots = mean.shape[0]    
+        
+        plot_max = mean.max()
+        plot_min = mean.min()
+        if center_zero:
+            plot_max = n.abs(mean).max()
+            plot_min = -plot_max
 
-    #     if not subplots_axis:
-    #         num_subplots = 1
-    #     else:
-    #         num_subplots = mean.shape[subplots_axis-1]
-    #     for plot_num in n.arange(num_subplots):
-    #         ax = plt.subplot(num_subplots, 1, plot_num + 1)
-            
-    #         img = plt.imshow(mean, cmap = cmap, vmin = plot_min, vmax = plot_max)
-    #         plt.colorbar(img, cmap = cmap)
-    #         plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trials_axis]} flies')
-    #         if x_ticks is None:
-    #             pass
-    #         else:
-    #             ticks = n.arange(self.data.shape[x_axis])
-    #             plt.xticks(ticks, x_ticks)
-    #         if y_ticks is None:
-    #             pass
-    #         else:
-    #             ticks = n.arange(self.data.shape[y_axis])
-    #             plt.yticks(ticks, y_ticks[::-1])
+        plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trials_axis]} flies')
+        for plot_num in n.arange(num_subplots):
+            ax = plt.subplot(num_subplots, 1, plot_num + 1)
+            if subplots_labels:
+                ax.set_title(str(subplots_labels[plot_num-1]))
+            img = plt.imshow(mean[plot_num-1], cmap = cmap, vmin = plot_min, vmax = plot_max)
+            plt.colorbar(img, cmap = cmap)
+            if x_ticks is None:
+                pass
+            else:
+                ticks = n.arange(self.data.shape[x_axis])
+                plt.xticks(ticks, x_ticks)
+            if y_ticks is None:
+                pass
+            else:
+                ticks = n.arange(self.data.shape[y_axis])
+                plt.yticks(ticks, y_ticks[::-1])
 
 
-    #         if x_label:
-    #            plt.xlabel(x_label) 
-    #         if y_label:
-    #            plt.ylabel(y_label) 
-
+            if x_label:
+               plt.xlabel(x_label) 
+            if y_label:
+               plt.ylabel(y_label)
+        self.num_figures += 1
