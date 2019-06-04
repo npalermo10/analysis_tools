@@ -401,17 +401,20 @@ class Hasty_plotter():
         self.time_axis = time_axis
         self.num_trials = self.data.shape[trials_axis]
         self.frames = self.data.shape[time_axis]
+        self.num_figures = 0
                        
-    def plot_time_series(self, colors_axis = None, colors_labels = None,  subplots_axis = None, sublots_labels = None,  x_axis = None, trials_axis = 0, start_t = 0, end_t = 1):
-        frames = 0
-        if x_axis == None:
-            frames = self.data.shape[-1]
-            x_axis = len(self.data.shape)
-            
-        else:
-            frames = self.data.shape[x_axis]
+    def plot_time_series(self, colors_axis = None, colors_labels = None,  subplots_axis = None, subplots_labels = None,  x_axis = None, trials_axis = 0, start_t = 0, end_t = 1):
+        plt.figure(self.num_figures)
+        if colors_axis and not subplots_axis:
+            data = self.data.traspose(self.trials_axis, colors_axis, self.time_axis)
+        if subplots_axis and not colors_axis:
+            data = self.data.traspose(self.trials_axis, subplots_axis, self.time_axis)
+        if subplots_axis and colors_axis: 
+            data = self.data.traspose(self.trials_axis, subplots_axis, colors_axis, self.time_axis)
+        
         mean = n.mean(self.data, axis = trials_axis)
-        sd_err = n.std(self.data, axis = trials_axis)/n.sqrt(self.data.shape[0])
+        sd_err = n.std(self.data, axis = trials_axis)/n.sqrt(self.data.shape[trials_axis])
+        
         if subplots_axis == None:
             num_subplots = 1
         else:
@@ -442,8 +445,10 @@ class Hasty_plotter():
                 std_err2plot = n.squeeze(sd_err[slices])
                 plt.plot(mean2plot)
                 plt.fill_between(n.arange(int(frames*end_t) - int(frames*start_t)), mean2plot + std_err2plot,  mean2plot- std_err2plot, alpha = 0.3)
-                
+        self.num_figures += 1
+        
     def plot_mean_resp(self, colors_axis = None, colors_labels = None, legend_title = None, subplots_axis = None, subplots_labels = None, x_axis = None, x_ticks = [], x_label = [], start_t = 0, end_t = 1):
+        plt.figure(self.num_figures)
         slices = [slice(None,None,None)]*len(self.data.shape)
         slices[self.time_axis] = slice(self.frames*start_t, self.frames*end_t)
         slices = tuple(slices)
