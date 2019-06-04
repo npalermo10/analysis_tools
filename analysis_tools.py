@@ -403,48 +403,39 @@ class Hasty_plotter():
         self.frames = self.data.shape[time_axis]
         self.num_figures = 0
                        
-    def plot_time_series(self, colors_axis = None, colors_labels = None,  subplots_axis = None, subplots_labels = None,  x_axis = None, trials_axis = 0, start_t = 0, end_t = 1):
+    def plot_time_series(self, colors_axis = None, colors_labels = None, legend_title = None, subplots_axis = None, subplots_labels = None,  x_axis = None, trials_axis = 0, start_t = 0, end_t = 1):
         plt.figure(self.num_figures)
-        if colors_axis and not subplots_axis:
-            data = self.data.traspose(self.trials_axis, colors_axis, self.time_axis)
-        if subplots_axis and not colors_axis:
-            data = self.data.traspose(self.trials_axis, subplots_axis, self.time_axis)
-        if subplots_axis and colors_axis: 
-            data = self.data.traspose(self.trials_axis, subplots_axis, colors_axis, self.time_axis)
-        
-        mean = n.mean(self.data, axis = trials_axis)
-        sd_err = n.std(self.data, axis = trials_axis)/n.sqrt(self.data.shape[trials_axis])
-        
-        if subplots_axis == None:
-            num_subplots = 1
-        else:
-            num_subplots = self.data.shape[subplots_axis]
-        if colors_axis == None:
-            num_colors = 1
-        else:     
-            num_colors = self.data.shape[colors_axis]
+        data = self.data
+        if not subplots_axis:
+            subplots_axis = len(data.shape) + 1
+            data = np.expand_dims(data, axis = -1)
+            
+        if not colors_axis:
+            colors_axis = len(data.shape) + 1
+            data = np.expand_dims(data, axis = -1)            
 
+        num_subplots = data.shape[subplots_axis]
+        num_colors = data.shape[colors_axis]
+        
+        data = data.transpose(self.trials_axis, subplots_axis, colors_axis, self.time_axis)
+        
+        mean = n.mean(data, axis = 0)
+        sd_err = n.std(data, axis = 0)/n.sqrt(data.shape[0])
+        
         plt.suptitle(f'{self.plot_title} - {self.data.shape[trials_axis]} flies')    
         for plot_num in n.arange(num_subplots):
             plt.subplot(num_subplots, 1, plot_num + 1)
             plt.axhline(0, color = 'k', linestyle = '--')
             plt.axvline(0, color = 'k', linestyle = '--')
             for color in n.arange(num_colors):
-                slices = []
-                if subplots_axis==None and colors_axis != None:
-                    slices = {colors_axis: slice(color, color+1, None), x_axis:slice(int(frames*start_t), int(frames*end_t), None)}
-                                    
-                if colors_axis == None and subplots_axis != None:
-                    slices = {subplots_axis: slice(plot_num, plot_num+1, None), x_axis:slice(int(frames*start_t), int(frames*end_t), None)}
-                                                            
-                if subplots_axis != None and colors_axis != None:    
-                    slices = {subplots_axis: slice(plot_num, plot_num+1, None), colors_axis:slice(color, color + 1, None), x_axis:slice(int(frames*start_t), int(frames*end_t), None)}
-
-                slices =  tuple([value for (key, value) in sorted(slices.items())])
-                mean2plot = n.squeeze(mean[slices])
-                std_err2plot = n.squeeze(sd_err[slices])
+                mean2plot = n.squeeze(mean[plot_num, color])
+                std_err2plot = n.squeeze(sd_err[plot_num, color])
                 plt.plot(mean2plot)
-                plt.fill_between(n.arange(int(frames*end_t) - int(frames*start_t)), mean2plot + std_err2plot,  mean2plot- std_err2plot, alpha = 0.3)
+                plt.fill_between(n.arange(int(self.frames*end_t) - int(self.frames*start_t)), mean2plot + std_err2plot,  mean2plot- std_err2plot, alpha = 0.3)
+                if colors_labels:
+                    patches =[mpatches.Patch(color = "C" + str(color), label = str(colors_labels[color])) for color in n.arange(num_colors)]
+                    plt.legend(title = legend_title, handles=patches)
+        
         self.num_figures += 1
         
     def plot_mean_resp(self, colors_axis = None, colors_labels = None, legend_title = None, subplots_axis = None, subplots_labels = None, x_axis = None, x_ticks = [], x_label = [], start_t = 0, end_t = 1):
