@@ -394,9 +394,13 @@ class Data_handler():
             
 class Hasty_plotter():
     ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing.'''
-    def __init__(self, data, plot_title= None):
+    def __init__(self, data, trials_axis = 0,  time_axis = -1, plot_title= None):
         self.data = data
         self.plot_title = plot_title
+        self.trials_axis = trials_axis
+        self.time_axis = time_axis
+        self.num_trials = self.data.shape[trials_axis]
+        self.frames = self.data.shape[time_axis]
                        
     def plot_time_series(self, colors_axis = None, colors_labels = None,  subplots_axis = None, sublots_labels = None,  x_axis = None, trials_axis = 0, start_t = 0, end_t = 1):
         frames = 0
@@ -439,18 +443,12 @@ class Hasty_plotter():
                 plt.plot(mean2plot)
                 plt.fill_between(n.arange(int(frames*end_t) - int(frames*start_t)), mean2plot + std_err2plot,  mean2plot- std_err2plot, alpha = 0.3)
                 
-    def plot_mean_resp(self, colors_axis = None, colors_labels = None, legend_title = None, subplots_axis = None, subplots_labels = None, x_axis = None, x_ticks = [], x_label = [], time_axis = None, trials_axis = 0, start_t = 0, end_t = 1):
-        if time_axis == None:
-            time_axis = len(self.data.shape) - 1
-            frames = self.data.shape[-1]
-        else:    
-            frames = self.data.shape[time_axis]
-            
+    def plot_mean_resp(self, colors_axis = None, colors_labels = None, legend_title = None, subplots_axis = None, subplots_labels = None, x_axis = None, x_ticks = [], x_label = [], start_t = 0, end_t = 1):
         slices = [slice(None,None,None)]*len(self.data.shape)
-        slices[time_axis] = slice(frames*start_t, frames*end_t)
+        slices[self.time_axis] = slice(self.frames*start_t, self.frames*end_t)
         slices = tuple(slices)
-        mean = self.data[slices].mean(axis = time_axis).mean(axis = trials_axis)        
-        sd_err = n.std(self.data[slices].mean(axis = time_axis), axis= trials_axis)/n.sqrt(self.data.shape[0])
+        mean = self.data[slices].mean(axis = self.time_axis).mean(axis = self.trials_axis)        
+        sd_err = n.std(self.data[slices].mean(axis = self.time_axis), axis= self.trials_axis)/n.sqrt(self.num_trials)
         if not subplots_axis:
             num_subplots = 1
         else:
@@ -460,7 +458,7 @@ class Hasty_plotter():
         else:     
             num_colors = mean.shape[colors_axis -1]
 
-        plt.suptitle(f'{self.plot_title} - {self.data.shape[trials_axis]} flies')    
+        plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trials_axis]} flies')    
         for plot_num in n.arange(num_subplots):
             ax = plt.subplot(num_subplots, 1, plot_num + 1)
             plt.axhline(0, color = 'k', linestyle = '--')
@@ -472,70 +470,64 @@ class Hasty_plotter():
                 patches =[mpatches.Patch(color = "C" + str(color), label = str(colors_labels[color])) for color in n.arange(num_colors)]
                 plt.legend(title = legend_title, handles=patches)
 
-            for color in n.arange(num_colors):                
-                if not subplots_axis and not colors_axis:
-                    plt.errorbar(n.arange(len(mean)), mean, yerr = sd_err, marker = 'o', ms = 9.0)
-                if subplots_axis and not colors_axis:
+            for color in n.arange(num_colors):
+                slices = [slice(None,None,None)]*len(self.data.shape)
+                if subplots_axis:
                     ax.set_title(str(subplots_labels[plot_num]))
-                    slices = [slice(None,None,None)]*len(self.data.shape)
                     slices[subplots_axis] = slice(plot_num, plot_num+1, 1)
-                    slices[x_axis] = slice(self.data.shape[x_axis])
-                    slices = tuple([s for s in slices if s != slice(None, None, None)])
-                    plt.errorbar(n.arange(self.data.shape[x_axis]) + offset, mean[slices].flatten(), yerr = sd_err[slices].flatten(), marker = 'o', ms = 9.0)
-                    
-                if colors_axis and not subplots_axis:
-                    slices = [slice(None,None,None)]*len(self.data.shape)
+                if colors_axis:
                     slices[colors_axis] = slice(color, color+1, 1)
-                    slices[x_axis] = slice(self.data.shape[x_axis])
-                    slices = tuple([s for s in slices if s != slice(None, None, None)])
-                    plt.errorbar(n.arange(self.data.shape[x_axis]) + offset, mean[slices].flatten(), yerr = sd_err[slices].flatten(), marker = 'o', ms = 9.0)
-                if colors_axis and subplots_axis:
-                    ax.set_title(str(subplots_labels[plot_num]))
-                    slices = [slice(None,None,None)]*len(self.data.shape)
-                    slices[colors_axis] = slice(color, color+1, 1)
-                    slices[subplots_axis] = slice(plot_num, plot_num+1, 1)
-                    slices[x_axis] = slice(self.data.shape[x_axis])
-                    slices = tuple([s for s in slices if s != slice(None, None, None)])
-                    plt.errorbar(n.arange(self.data.shape[x_axis]) + offset, mean[slices].flatten(), yerr = sd_err[slices].flatten(), marker = 'o', ms = 9.0)
-
+                slices[x_axis] = slice(self.data.shape[x_axis])
+                slices = tuple([s for s in slices if s != slice(None, None, None)])
+                plt.errorbar(n.arange(self.data.shape[x_axis]) + offset, mean[slices].flatten(), yerr = sd_err[slices].flatten(), marker = 'o', ms = 9.0)
                 offset += 0.01
 
                 
-    def plot_mean_resp_heatmap(self, x_axis = None, x_axis_label = None, x_ticks= None, y_axis = None, y_axis_label = None, y_ticks = None,  time_axis = None, trials_axis = 0, start_t = 0, end_t = 1, col_map = 'viridis', center_zero = False):
-        frames = 0
-        if time_axis == None:
-            time_axis = len(self.data.shape) - 1
-            frames = self.data.shape[-1]
-        else:    
-            frames = self.data.shape[time_axis]
-       
-        mean = self.data.mean(axis = time_axis).mean(axis = trials_axis)
-        if y_axis < x_axis:
+    def plot_mean_resp_heatmap(self, x_axis = None, x_label = None, x_ticks= None, y_axis = None, y_label = None, y_ticks = None,  subplots_axis = None, subplots_labels = None, start_t = 0, end_t = 1, center_zero = False, cmap = 'viridis'):
+        slices = [slice(None,None,None)]*len(self.data.shape)
+        slices[self.time_axis] = slice(self.frames*start_t, self.frames*end_t)
+        slices = tuple(slices)
+        mean = self.data[slices].mean(axis = self.time_axis).mean(axis = self.trials_axis)        
+        if not subplots_axis:
+            num_subplots = 1
+        else:
+            num_subplots = mean.shape[subplots_axis-1]    
+        if y_axis < x_axis and not subplots_axis:
             mean = mean.T
+        if y_axis < x_axis and subplots_axis:
+            mean[subplots_axis] = mean[subplots_axis].T
         mean = mean[:, ::-1]
         plot_max = mean.max()
         plot_min = mean.min()
         if center_zero:
            plot_max = n.abs(mean).max()
            plot_min = -plot_max
+        import pdb; pdb.set_trace()
+
+        if not subplots_axis:
+            num_subplots = 1
+        else:
+            num_subplots = mean.shape[subplots_axis-1]
+        for plot_num in n.arange(num_subplots):
+            ax = plt.subplot(num_subplots, 1, plot_num + 1)
             
-        img = plt.imshow(mean, cmap = col_map, vmin = plot_min, vmax = plot_max)
-        plt.colorbar(img, cmap = col_map)
-        plt.suptitle(f'{self.plot_title} - {self.data.shape[trials_axis]} flies')
-        if x_ticks is None:
-            pass
-        else:
-            ticks = n.arange(self.data.shape[x_axis])
-            plt.xticks(ticks, x_ticks)
-        if y_ticks is None:
-            pass
-        else:
-            ticks = n.arange(self.data.shape[y_axis])
-            plt.yticks(ticks, y_ticks[::-1])
+            img = plt.imshow(mean, cmap = cmap, vmin = plot_min, vmax = plot_max)
+            plt.colorbar(img, cmap = cmap)
+            plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trials_axis]} flies')
+            if x_ticks is None:
+                pass
+            else:
+                ticks = n.arange(self.data.shape[x_axis])
+                plt.xticks(ticks, x_ticks)
+            if y_ticks is None:
+                pass
+            else:
+                ticks = n.arange(self.data.shape[y_axis])
+                plt.yticks(ticks, y_ticks[::-1])
 
 
-        if x_axis_label:
-           plt.xlabel(x_axis_label) 
-        if y_axis_label:
-           plt.ylabel(y_axis_label) 
-        
+            if x_label:
+               plt.xlabel(x_label) 
+            if y_label:
+               plt.ylabel(y_label) 
+
