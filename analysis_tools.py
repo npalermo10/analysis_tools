@@ -412,11 +412,11 @@ class Hasty_plotter():
         data = self.data
         if not subplots_axis:
             subplots_axis = len(data.shape) + 1
-            data = np.expand_dims(data, axis = -1)
+            data = n.expand_dims(data, axis = -1)
             
         if not colors_axis:
             colors_axis = len(data.shape) + 1
-            data = np.expand_dims(data, axis = -1)            
+            data = n.expand_dims(data, axis = -1)            
 
         num_subplots = data.shape[subplots_axis]
         num_colors = data.shape[colors_axis]
@@ -449,16 +449,16 @@ class Hasty_plotter():
         plt.figure(self.num_figures)
         data = self.data
         if not subplots_axis:
-            subplots_axis = len(data.shape) + 1
-            data = np.expand_dims(data, axis = -1)
+            subplots_axis = len(data.shape) 
+            data = n.expand_dims(data, axis = -1)
             
         if not colors_axis:
-            colors_axis = len(data.shape) + 1
-            data = np.expand_dims(data, axis = -1)            
+            colors_axis = len(data.shape)
+            data = n.expand_dims(data, axis = -1)            
 
         if not x_axis:
-            colors_axis = len(data.shape) + 1
-            data = np.expand_dims(data, axis = -1)            
+            colors_axis = len(data.shape)
+            data = n.expand_dims(data, axis = -1)            
 
         num_subplots = data.shape[subplots_axis]
         num_colors = data.shape[colors_axis]
