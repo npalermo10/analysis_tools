@@ -436,7 +436,7 @@ class Hasty_plotter():
                 std_err2plot = n.squeeze(sd_err[plot_num, color])
                 plt.plot(mean2plot)
                 plt.fill_between(n.arange(int(self.frames*end_t) - int(self.frames*start_t)), mean2plot + std_err2plot,  mean2plot- std_err2plot, alpha = 0.3)
-                if colors_labels:
+                if colors_labels is not None:
                     patches =[mpatches.Patch(color = "C" + str(color), label = str(colors_labels[color])) for color in n.arange(num_colors)]
                     plt.legend(title = legend_title, handles=patches)
         
