@@ -477,7 +477,7 @@ class Hasty_plotter():
             offset = 0.02
             plt.xticks(n.arange(len_x_axis), x_ticks)
             plt.xlabel(x_label)
-            if colors_labels:
+            if colors_labels is not None:
                 patches =[mpatches.Patch(color = "C" + str(color), label = str(colors_labels[color])) for color in n.arange(num_colors)]
                 plt.legend(title = legend_title, handles=patches)
 
