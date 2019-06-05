@@ -394,7 +394,7 @@ class Data_handler():
             
 class Hasty_plotter():
     ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing.'''
-    def __init__(self, data, trials_axis = 0,  time_axis = -1, plot_title= None):
+    def __init__(self, data, trials_axis = 0,  time_axis = -1, plot_title= None, starting_fig_num = 0):
         assert len(data.shape) >= 3, 'Data must be at least 3 dimensions to plot.'
         self.data = data
         self.plot_title = plot_title
@@ -402,7 +402,7 @@ class Hasty_plotter():
         self.time_axis = time_axis
         self.num_trials = self.data.shape[trials_axis]
         self.frames = self.data.shape[time_axis]
-        self.num_figures = 0
+        self.num_figures = starting_fig_num
 
                        
     def plot_time_series(self, colors_axis = None, colors_labels = None, legend_title = None, subplots_axis = None, subplots_labels = None,  x_axis = None, trials_axis = 0, start_t = 0, end_t = 1):
