@@ -393,7 +393,7 @@ class Data_handler():
             self.flat_mean = self.data.mean(axis = time_axis)
             
 class Hasty_plotter():
-    ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing.'''
+    ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing. If you want to put in data that is already time averaged, then just make sure you expand_dims on it so that it has a time axis which is size 1. '''
     def __init__(self, data, trials_axis = 0,  time_axis = -1, plot_title= None, starting_fig_num = 0):
         assert len(data.shape) >= 3, 'Data must be at least 3 dimensions to plot.'
         self.data = data
