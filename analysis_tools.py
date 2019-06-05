@@ -395,6 +395,7 @@ class Data_handler():
 class Hasty_plotter():
     ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing.'''
     def __init__(self, data, trials_axis = 0,  time_axis = -1, plot_title= None):
+        assert len(data.shape) >= 3, 'Data must be at least 3 dimensions to plot.'
         self.data = data
         self.plot_title = plot_title
         self.trials_axis = trials_axis
@@ -402,8 +403,11 @@ class Hasty_plotter():
         self.num_trials = self.data.shape[trials_axis]
         self.frames = self.data.shape[time_axis]
         self.num_figures = 0
+
                        
     def plot_time_series(self, colors_axis = None, colors_labels = None, legend_title = None, subplots_axis = None, subplots_labels = None,  x_axis = None, trials_axis = 0, start_t = 0, end_t = 1):
+        num_axes_in_args = (colors_axis is not None) + (x_axis is not None) + (subplots_axis is not None)
+        assert len(self.data.shape) == 2 + num_axes_in_args, f'Incorrect number of axes arguments. There should only be {len(self.data.shape)} and you have {num_axes_in_args}'
         plt.figure(self.num_figures)
         data = self.data
         if not subplots_axis:
@@ -439,26 +443,32 @@ class Hasty_plotter():
         self.num_figures += 1
         
     def plot_mean_resp(self, colors_axis = None, colors_labels = None, legend_title = None, subplots_axis = None, subplots_labels = None, x_axis = None, x_ticks = [], x_label = [], start_t = 0, end_t = 1):
+        
+        num_axes_in_args = (colors_axis is not None) + (x_axis is not None) + (subplots_axis is not None)
+        assert len(self.data.shape) == num_axes_in_args + 2, f'Incorrect number of axes arguments. There should only be {len(self.data.shape)} and you have {num_axes_in_args}'
         plt.figure(self.num_figures)
-        slices = [slice(None,None,None)]*len(self.data.shape)
-        slices[self.time_axis] = slice(self.frames*start_t, self.frames*end_t)
-        slices = tuple(slices)
-        mean = self.data[slices].mean(axis = self.time_axis).mean(axis = self.trials_axis)        
-        sd_err = n.std(self.data[slices].mean(axis = self.time_axis), axis= self.trials_axis)/n.sqrt(self.num_trials)
+        data = self.data
         if not subplots_axis:
-            num_subplots = 1
-        len_x_axis = 0
-        if x_axis:
-            len_x_axis = self.data.shape[x_axis]
-        if not x_axis:
-            len_x_axis = 1
-        else:
-            num_subplots = mean.shape[subplots_axis-1]
+            subplots_axis = len(data.shape) + 1
+            data = np.expand_dims(data, axis = -1)
+            
         if not colors_axis:
-            num_colors = 1
-        else:     
-            num_colors = mean.shape[colors_axis -1]
+            colors_axis = len(data.shape) + 1
+            data = np.expand_dims(data, axis = -1)            
 
+        if not x_axis:
+            colors_axis = len(data.shape) + 1
+            data = np.expand_dims(data, axis = -1)            
+
+        num_subplots = data.shape[subplots_axis]
+        num_colors = data.shape[colors_axis]
+        len_x_axis = data.shape[x_axis]
+            
+        data = data.transpose(self.trials_axis, subplots_axis, colors_axis, x_axis, self.time_axis)
+        
+        mean = data[...,start_t*self.frames: end_t*self.frames].mean(axis = 4).mean(axis = 0)
+        sd_err = n.std(data[..., start_t*self.frames: end_t*self.frames].mean(axis = 4) , axis= 0)/n.sqrt(self.num_trials)
+       
         plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trials_axis]} flies')    
         for plot_num in n.arange(num_subplots):
             ax = plt.subplot(num_subplots, 1, plot_num + 1)
@@ -467,21 +477,12 @@ class Hasty_plotter():
             offset = 0.02
             plt.xticks(n.arange(len_x_axis), x_ticks)
             plt.xlabel(x_label)
-            if colors_axis and colors_labels:
+            if colors_labels:
                 patches =[mpatches.Patch(color = "C" + str(color), label = str(colors_labels[color])) for color in n.arange(num_colors)]
                 plt.legend(title = legend_title, handles=patches)
 
             for color in n.arange(num_colors):
-                slices = [slice(None,None,None)]*len(self.data.shape)
-                if subplots_axis:
-                    ax.set_title(str(subplots_labels[plot_num]))
-                    slices[subplots_axis] = slice(plot_num, plot_num+1, 1)
-                if colors_axis:
-                    slices[colors_axis] = slice(color, color+1, 1)
-                if x_axis:     
-                    slices[x_axis] = slice(self.data.shape[x_axis])
-                slices = tuple([s for s in slices if s != slice(None, None, None)])
-                plt.errorbar(n.arange(len_x_axis) + offset, mean[slices].flatten(), yerr = sd_err[slices].flatten(), marker = 'o', ms = 9.0)
+                plt.errorbar(n.arange(len_x_axis) + offset, mean[plot_num, color], yerr = sd_err[plot_num, color], marker = 'o', ms = 9.0)
                 offset += len_x_axis*0.005
 
         self.num_figures += 1
