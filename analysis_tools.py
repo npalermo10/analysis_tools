@@ -15,6 +15,24 @@ blue = [0.2980392156862745, 0.4470588235294118, 0.6901960784313725]
 
 green = [0.3333333333333333, 0.6588235294117647, 0.40784313725490196]
 
+def f_minus_i(data, i0, i1, f0,f1 = None, time_axis = None):
+    if time_axis is None:
+        time_axis = len(data.shape)
+    if f1 is None:
+        f1 = data.shape[time_axis]
+    num_axes = len(data.shape)
+    
+    i_slices = [slice(None,None,None) for axis in n.arange(num_axes)]
+    i_slices[time_axis] = slice(i0,i1,None)
+    f_slices = [slice(None,None,None) for axis in n.arange(num_axes)]
+    f_slices[time_axis] = slice(f0,f1,None)
+
+    i_frames = data[tuple(i_slices)]
+    f_frames = data[tuple(f_slices)]
+    i_mean = n.expand_dims(i_frames.mean(time_axis), axis = time_axis).repeat(f_frames.shape[time_axis], axis = time_axis)
+
+    return f_frames - i_mean
+
 
 class WBA_trial():
     '''A class to read, hold and analyze wba data from wing beat analyzers'''
