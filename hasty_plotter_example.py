@@ -31,6 +31,14 @@ lmr[:,2] = lmr[:,2] + 3
 lmr[:,:,0] = lmr[:,:,0] + 1
 lmr[:,:,1] = lmr[:,:,1] + 2
 
-plotter2d = analysis_tools.Hasty_plotter(data = lmr, plot_title = 'example plots 2D', starting_fig_num = plotter3d.num_figures + 1) # assumes trials axis is 0 and time axis is -1
+plotter2d = analysis_tools.Hasty_plotter(data = lmr, plot_title = 'example plots 2D', starting_fig_num = len(plotter3d.figs) + 1) # assumes trials axis is 0 and time axis is -1. setting the starting figure number ensures we aren't overwriting figures from previous plotter.
 
 plotter2d.plot_time_series(colors_axis = 2, colors_labels = ['cold', 'warm'], subplots_axis = 1, subplots_labels =  ['slow', 'med', 'fast'])
+
+# a hasty plotter object provides access to individual figures and subplots that it creates so you can always make fine adjustments to plots afterwards.
+ylabels = ['voltage', 'height',  'weight']
+for i_ax, ax in enumerate(plotter2d.figs[0].axes):
+    ax.set_ylabel(ylabels[i_ax])
+
+# hasty plotter comes with some convenience functions to manipulate all subplots in a figure simultaneously       
+plotter2d.eq_ylims(fig_ind = 0)
