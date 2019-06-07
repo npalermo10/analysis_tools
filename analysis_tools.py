@@ -412,21 +412,34 @@ class Data_handler():
             
 class Hasty_plotter():
     ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing. If you want to put in data that is already time averaged, then just make sure you expand_dims on it so that it has a time axis which is size 1. '''
-    def __init__(self, data, trials_axis = 0,  time_axis = -1, plot_title= None, starting_fig_num = 0):
+    def __init__(self, data, trials_axis = 0,  time_axis = None, plot_title= None, starting_fig_num = 0):
         assert len(data.shape) >= 3, 'Data must be at least 3 dimensions to plot.'
+        self.time_axis = time_axis
+        if time_axis == None:
+            self.time_axis = len(data.shape) -1
         self.data = data
         self.plot_title = plot_title
         self.trials_axis = trials_axis
-        self.time_axis = time_axis
         self.num_trials = self.data.shape[trials_axis]
-        self.frames = self.data.shape[time_axis]
-        self.num_figures = starting_fig_num
-                       
+        self.frames = self.data.shape[self.time_axis]
+        self.starting_fig_num = starting_fig_num # so you can make a new hasty plotter object that won't override figs from another
+        self.figs = []
+
+    def eq_ylims(self, fig_ind = 0, y_max= None, y_min = None):
+        if y_max is None:
+            y_max = max(ax.get_ylim()[1] for ax in self.figs[fig_ind].axes)
+        if y_min is None:
+            y_min = min(ax.get_ylim()[0] for ax in self.figs[fig_ind].axes)
+    
+        for ax in self.figs[fig_ind].axes:
+            ax.set_ylim([y_min, y_max])
+            
     def plot_time_series(self, colors_axis = None, colors_labels = None, legend_title = None, subplots_axis = None, subplots_labels = None, trials_axis = 0, start_t = 0, end_t = 1):
         assert self.frames > 1, f"You can't plot time series data if you have no time series. You only have {self.frames} frame of data."
         num_axes_in_args = (colors_axis is not None) +  (subplots_axis is not None)
         assert len(self.data.shape) == 2 + num_axes_in_args, f'Incorrect number of axes arguments. There should only be {len(self.data.shape)} and you have {num_axes_in_args}'
-        plt.figure(self.num_figures)
+        fig = plt.figure(len(self.figs) + self.starting_fig_num)
+        self.figs.append(fig)
         data = self.data
         if not subplots_axis:
             subplots_axis = len(data.shape) + 1
@@ -444,9 +457,9 @@ class Hasty_plotter():
         mean = n.mean(data, axis = 0)
         sd_err = n.std(data, axis = 0)/n.sqrt(data.shape[0])
         
-        plt.suptitle(f'{self.plot_title} - {self.data.shape[trials_axis]} flies')    
+        fig.suptitle(f'{self.plot_title} - {self.data.shape[trials_axis]} flies')    
         for plot_num in n.arange(num_subplots):
-            plt.subplot(num_subplots, 1, plot_num + 1)
+            ax = fig.add_subplot(num_subplots, 1, plot_num + 1)
             plt.axhline(0, color = 'k', linestyle = '--')
             plt.axvline(0, color = 'k', linestyle = '--')
             for color in n.arange(num_colors):
@@ -458,13 +471,12 @@ class Hasty_plotter():
                     patches =[mpatches.Patch(color = "C" + str(color), label = str(colors_labels[color])) for color in n.arange(num_colors)]
                     plt.legend(title = legend_title, handles=patches)
         
-        self.num_figures += 1
-        
-    def plot_mean_resp(self, colors_axis = None, colors_labels = None, legend_title = None, subplots_axis = None, subplots_labels = None, x_axis = None, x_ticks = [], x_label = [], start_t = 0, end_t = 1):
+    def plot_mean_resp(self, colors_axis = None, colors_labels = None, legend_title = None, subplots_axis = None, subplots_labels = None, x_axis = None, x_vals = None, x_ticks = None, x_label = None, start_t = 0, end_t = 1):
         
         num_axes_in_args = (colors_axis is not None) + (x_axis is not None) + (subplots_axis is not None)
         assert len(self.data.shape) == num_axes_in_args + 2, f'Incorrect number of axes arguments. There should only be {len(self.data.shape)} and you have {num_axes_in_args}'
-        plt.figure(self.num_figures)
+        fig = plt.figure(len(self.figs))
+        self.figs.append(fig)
         data = self.data
         if not subplots_axis:
             subplots_axis = len(data.shape) 
@@ -475,13 +487,18 @@ class Hasty_plotter():
             data = n.expand_dims(data, axis = -1)            
 
         if not x_axis:
-            colors_axis = len(data.shape)
+            x_axis = len(data.shape)
             data = n.expand_dims(data, axis = -1)            
 
         num_subplots = data.shape[subplots_axis]
         num_colors = data.shape[colors_axis]
-        len_x_axis = data.shape[x_axis]
+        num_xs = data.shape[x_axis]
+        if x_vals is not None and x_ticks is None:
+            x_ticks = x_vals
             
+        if x_vals is None:
+            x_vals = n.arange(num_xs)
+        
         data = data.transpose(self.trials_axis, subplots_axis, colors_axis, x_axis, self.time_axis)
         
         mean = data[...,start_t*self.frames: end_t*self.frames].mean(axis = 4).mean(axis = 0)
@@ -493,22 +510,22 @@ class Hasty_plotter():
             plt.axhline(0, color = 'k', linestyle = '--')
             plt.axvline(0, color = 'k', linestyle = '--')
             offset = 0.02
-            plt.xticks(n.arange(len_x_axis), x_ticks)
+            plt.xticks(x_vals, x_ticks)
             plt.xlabel(x_label)
             if colors_labels is not None:
                 patches =[mpatches.Patch(color = "C" + str(color), label = str(colors_labels[color])) for color in n.arange(num_colors)]
                 plt.legend(title = legend_title, handles=patches)
 
             for color in n.arange(num_colors):
-                plt.errorbar(n.arange(len_x_axis) + offset, mean[plot_num, color], yerr = sd_err[plot_num, color], marker = 'o', ms = 9.0)
-                offset += len_x_axis*0.005
+                plt.errorbar(x_vals + offset, mean[plot_num, color], yerr = sd_err[plot_num, color], marker = 'o', ms = 9.0)
+                offset += num_xs*0.0005
 
-        self.num_figures += 1
-        
+                
     def plot_mean_resp_heatmap(self, x_axis = None, x_label = None, x_ticks= None, y_axis = None, y_label = None, y_ticks = None,  subplots_axis = None, subplots_labels = None, start_t = 0, end_t = 1, center_zero = False, cmap = 'viridis'):
         assert x_axis, "can't plot heatmap without x axis"
         assert y_axis, "can't plot heatmap without y axis"
-        plt.figure(self.num_figures)
+        fig = plt.figure(len(self.figs) + self.starting_fig_num)
+        self.figs.append(fig)
         data = []
                     
         if subplots_axis:
