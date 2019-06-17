@@ -501,8 +501,8 @@ class Hasty_plotter():
         
         data = data.transpose(self.trials_axis, subplots_axis, colors_axis, x_axis, self.time_axis)
         
-        mean = data[...,start_t*self.frames: end_t*self.frames].mean(axis = 4).mean(axis = 0)
-        sd_err = n.std(data[..., start_t*self.frames: end_t*self.frames].mean(axis = 4) , axis= 0)/n.sqrt(self.num_trials)
+        mean = data[...,int(start_t*self.frames): int(end_t*self.frames)].mean(axis = 4).mean(axis = 0)
+        sd_err = n.std(data[..., int(start_t*self.frames): int(end_t*self.frames)].mean(axis = 4) , axis= 0)/n.sqrt(self.num_trials)
        
         plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trials_axis]} flies')    
         for plot_num in n.arange(num_subplots):
