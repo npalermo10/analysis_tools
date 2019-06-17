@@ -509,7 +509,7 @@ class Hasty_plotter():
             ax = plt.subplot(num_subplots, 1, plot_num + 1)
             plt.axhline(0, color = 'k', linestyle = '--')
             plt.axvline(0, color = 'k', linestyle = '--')
-            offset = 0.02
+            offset = 0
             plt.xticks(x_vals, x_ticks)
             plt.xlabel(x_label)
             if colors_labels is not None:
