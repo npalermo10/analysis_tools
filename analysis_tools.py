@@ -479,7 +479,8 @@ class Hasty_plotter():
         for ax in self.figs[fig_ind].axes:
             ax.set_ylim([y_min, y_max])
             
-    def plot_time_series(self):
+    def plot_time_series(self, **kwargs):
+        self.update_axes_info(**kwargs)
         subplot_axis = self.subplot_axis
         subplot_labels = self.subplot_labels
         color_axis = self.color_axis
@@ -526,7 +527,8 @@ class Hasty_plotter():
                     patches =[mpatches.Patch(color = "C" + str(color), label = str(color_labels[color])) for color in n.arange(num_colors)]
                     plt.legend(title = self.legend_title, handles=patches)
         
-    def plot_mean_resp(self):
+    def plot_mean_resp(self, **kwargs):
+        self.update_axes_info(**kwargs)
         subplot_axis = self.subplot_axis
         color_axis = self.color_axis
         trial_axis = self.trial_axis
@@ -590,7 +592,8 @@ class Hasty_plotter():
                 offset += num_xs*0.0005
 
                 
-    def plot_mean_resp_heatmap(self, y_axis = None, y_labels = None, y_ticks = None, center_zero = False, cmap = 'viridis'):
+    def plot_mean_resp_heatmap(self, y_axis = None, y_labels = None, y_ticks = None, center_zero = False, cmap = 'viridis', **kwargs):
+        self.update_axes_info(**kwargs)
         subplot_axis = self.subplot_axis
         color_axis = self.color_axis
         trial_axis = self.trial_axis
@@ -646,7 +649,8 @@ class Hasty_plotter():
             if y_labels:
                plt.ylabel(y_labels)
         
-    def plot_indv_mean_resps(self):
+    def plot_indv_mean_resps(self, **kwargs):
+        self.update_axes_info(**kwargs)
         subplot_axis = self.subplot_axis
         color_axis = self.color_axis
         trial_axis = self.trial_axis
