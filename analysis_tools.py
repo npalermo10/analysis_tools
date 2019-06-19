@@ -438,6 +438,38 @@ class Hasty_plotter():
         self.starting_fig_num = starting_fig_num # so you can make a new hasty plotter object that won't override figs from another
         self.figs = []
 
+    def update_axes_info(self, **kwargs):
+        orig_axes_info = {'subplot_axis' : self.subplot_axis,
+                          'subplot_labels' : self.subplot_labels,
+                          'color_axis' : self.color_axis,
+                          'color_labels' : self.color_labels,
+                          'x_axis' : self.x_axis,
+                          'x_labels': self.x_labels,
+        }
+        for kwarg in kwargs:
+            if kwarg == 'subplot_axis':
+                if 'subplot_labels' not in kwargs:
+                    if kwargs['subplot_axis'] == orig_axes_info['color_axis']:
+                        self.subplot_labels = orig_axes_info['color_labels']
+                    if kwargs['subplot_axis'] == orig_axes_info['x_axis']:
+                        self.subplot_labels = orig_axes_info['x_labels']
+                self.subplot_axis = kwargs['subplot_axis']
+            if kwarg == 'color_axis':
+                if 'color_labels' not in kwargs:
+                    if kwargs['color_axis'] == orig_axes_info['subplot_axis']:
+                        self.color_labels = orig_axes_info['subplot_labels']
+                    if kwargs['color_axis'] == orig_axes_info['x_axis']:
+                        self.color_labels = orig_axes_info['x_labels']
+                self.color_axis = kwargs['color_axis']
+            if kwarg == 'x_axis':
+                if 'x_labels' not in kwargs:
+                    if kwargs['x_axis'] == orig_axes_info['subplot_axis']:
+                        self.x_labels = orig_axes_info['subplot_labels']
+                    if kwargs['x_axis'] == orig_axes_info['color_axis']:
+                        self.x_labels = orig_axes_info['color_labels']
+                self.x_axis = kwargs['x_axis']
+                    
+    
     def eq_ylims(self, fig_ind = 0, y_max= None, y_min = None):
         if y_max is None:
             y_max = max(ax.get_ylim()[1] for ax in self.figs[fig_ind].axes)
