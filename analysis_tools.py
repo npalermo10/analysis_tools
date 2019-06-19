@@ -660,7 +660,7 @@ class Hasty_plotter():
             for color in n.arange(num_colors):
                 offset = 0
                 for trial in mean:
-                    plt.scatter(n.arange(len_x_axis) + offset, trial[plot_num, color])
-                    offset += len_x_axis*0.0005
+                    plt.scatter(n.arange(len_x_axis) + offset, trial[plot_num, color], color = "C" + str(color))
+                    offset += n.diff(n.arange(len_x_axis), n = 1).mean()*0.005
         
         
