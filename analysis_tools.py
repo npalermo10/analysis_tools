@@ -364,7 +364,7 @@ class Array_builder():
                 self.lmr[slices] = self.d.fetch_trials_data(*mod_coords_shaped[i_coord])
                 
             except:
-               print(f"error loading coordinate: {coord} into lights index {mod_coords_shaped[i_coord]} into lmr. check that your light mods are correct and conditions are in the correct order. Is target array shape: {self.lmr.shape}? If not there might be a problem with file: {self.d[coord[0]]}")
+                print(f"error loading coordinate: {coord} into lights index {mod_coords_shaped[i_coord]} into lmr. check that your light mods are correct and conditions are in the correct order. Is target array shape: {self.lmr.shape}? If not there might be a problem with file: {self.d[coord[0]]}")
             try:
                 for i_channel, channel in enumerate(self.raw_channels):
                     self.raw_channel_data[i_channel][slices] = self.d.fetch_trials_raw_data(channel, *mod_coords_shaped[i_coord])
@@ -384,9 +384,9 @@ class Array_builder():
 
 class Data_handler():
     ''' this class gets the mean and std err for data. Takes either data array or list. Also performs hasty stats.'''
-    def __init__(self, data, trials_axis = 0, time_axis = -1):
+    def __init__(self, data, trial_axis = 0, time_axis = -1):
         self.data = data
-        self.trials_axis = trials_axis
+        self.trial_axis = trial_axis
         self.time_axis = time_axis
         self.is_list = False
         if isinstance(self.data, list):
@@ -403,24 +403,37 @@ class Data_handler():
             means = []
             ses = []
             for d in self.data:
-                means.append(d.mean(axis = self.trials_axis))
-                se.append(d.std(axis = self.trials_axis))
+                means.append(d.mean(axis = self.trial_axis))
+                se.append(d.std(axis = self.trial_axis))
         else:
-            self.mean = self.data.mean(axis = trials_axis)
-            self.se = self.data.std(axis = trials_axis)/sqrt(shape(self.data)[trials_axis])
+            self.mean = self.data.mean(axis = trial_axis)
+            self.se = self.data.std(axis = trial_axis)/sqrt(shape(self.data)[trial_axis])
             self.flat_mean = self.data.mean(axis = time_axis)
             
 class Hasty_plotter():
     ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing. If you want to put in data that is already time averaged, then just make sure you expand_dims on it so that it has a time axis which is size 1. '''
-    def __init__(self, data, trials_axis = 0,  time_axis = None, plot_title= None, starting_fig_num = 0):
+    def __init__(self, data, trial_axis = 0,  time_axis = None, plot_title= None, starting_fig_num = 0, color_axis = None, color_labels = None,subplot_axis = None, subplot_labels = None,  x_axis = None, figure_axis = None,  legend_title = None, start_t = 0, end_t = 1, x_vals = None, x_ticks = None, x_label = None):
         assert len(data.shape) >= 3, 'Data must be at least 3 dimensions to plot.'
         self.time_axis = time_axis
+        self.data = data
+        
+        self.trial_axis = trial_axis
+        self.color_axis = color_axis
+        self.color_labels = color_labels
+        self.x_axis = x_axis
+        self.x_vals = x_vals
+        self.x_ticks = x_ticks
+        self.x_labels = x_label
+        self.subplot_axis = subplot_axis
+        self.subplot_labels = subplot_labels
+        self.figure_axis = figure_axis
+        self.legend_title = legend_title
+        self.start_t = start_t
+        self.end_t = end_t
         if time_axis == None:
             self.time_axis = len(data.shape) -1
-        self.data = data
         self.plot_title = plot_title
-        self.trials_axis = trials_axis
-        self.num_trials = self.data.shape[trials_axis]
+        self.num_trials = self.data.shape[trial_axis]
         self.frames = self.data.shape[self.time_axis]
         self.starting_fig_num = starting_fig_num # so you can make a new hasty plotter object that won't override figs from another
         self.figs = []
@@ -434,107 +447,141 @@ class Hasty_plotter():
         for ax in self.figs[fig_ind].axes:
             ax.set_ylim([y_min, y_max])
             
-    def plot_time_series(self, colors_axis = None, colors_labels = None, legend_title = None, subplots_axis = None, subplots_labels = None, trials_axis = 0, start_t = 0, end_t = 1):
+    def plot_time_series(self):
+        subplot_axis = self.subplot_axis
+        subplot_labels = self.subplot_labels
+        color_axis = self.color_axis
+        color_labels = self.color_labels
+        trial_axis = self.trial_axis
+        time_axis = self.time_axis
+        
         assert self.frames > 1, f"You can't plot time series data if you have no time series. You only have {self.frames} frame of data."
-        num_axes_in_args = (colors_axis is not None) +  (subplots_axis is not None)
+        num_axes_in_args = (color_axis is not None) +  (subplot_axis is not None)
         assert len(self.data.shape) == 2 + num_axes_in_args, f'Incorrect number of axes arguments. There should only be {len(self.data.shape)} and you have {num_axes_in_args}'
         fig = plt.figure(len(self.figs) + self.starting_fig_num)
         self.figs.append(fig)
         data = self.data
-        if not subplots_axis:
-            subplots_axis = len(data.shape) + 1
+        if not subplot_axis:
+            subplot_axis = len(data.shape) + 1
             data = n.expand_dims(data, axis = -1)
             
-        if not colors_axis:
-            colors_axis = len(data.shape) + 1
+        if not color_axis:
+            color_axis = len(data.shape) + 1
             data = n.expand_dims(data, axis = -1)            
 
-        num_subplots = data.shape[subplots_axis]
-        num_colors = data.shape[colors_axis]
+        num_subplots = data.shape[subplot_axis]
+        num_colors = data.shape[color_axis]
         
-        data = data.transpose(self.trials_axis, subplots_axis, colors_axis, self.time_axis)
+        data = data.transpose(trial_axis, subplot_axis, color_axis, time_axis)
         
         mean = n.mean(data, axis = 0)
         sd_err = n.std(data, axis = 0)/n.sqrt(data.shape[0])
         
-        fig.suptitle(f'{self.plot_title} - {self.data.shape[trials_axis]} flies')    
+        fig.suptitle(f'{self.plot_title} - {self.data.shape[trial_axis]} flies')    
         for plot_num in n.arange(num_subplots):
+            
             ax = fig.add_subplot(num_subplots, 1, plot_num + 1)
             plt.axhline(0, color = 'k', linestyle = '--')
             plt.axvline(0, color = 'k', linestyle = '--')
+            if subplot_labels is not None:
+                ax.set_title(subplot_labels[plot_num])
             for color in n.arange(num_colors):
                 mean2plot = n.squeeze(mean[plot_num, color])
                 std_err2plot = n.squeeze(sd_err[plot_num, color])
                 plt.plot(mean2plot)
-                plt.fill_between(n.arange(int(self.frames*end_t) - int(self.frames*start_t)), mean2plot + std_err2plot,  mean2plot- std_err2plot, alpha = 0.3)
-                if colors_labels is not None:
-                    patches =[mpatches.Patch(color = "C" + str(color), label = str(colors_labels[color])) for color in n.arange(num_colors)]
-                    plt.legend(title = legend_title, handles=patches)
+                plt.fill_between(n.arange(int(self.frames*self.end_t) - int(self.frames*self.start_t)), mean2plot + std_err2plot,  mean2plot- std_err2plot, alpha = 0.3)
+                if color_labels is not None:
+                    patches =[mpatches.Patch(color = "C" + str(color), label = str(color_labels[color])) for color in n.arange(num_colors)]
+                    plt.legend(title = self.legend_title, handles=patches)
         
-    def plot_mean_resp(self, colors_axis = None, colors_labels = None, legend_title = None, subplots_axis = None, subplots_labels = None, x_axis = None, x_vals = None, x_ticks = None, x_label = None, start_t = 0, end_t = 1):
-        
-        num_axes_in_args = (colors_axis is not None) + (x_axis is not None) + (subplots_axis is not None)
+    def plot_mean_resp(self):
+        subplot_axis = self.subplot_axis
+        color_axis = self.color_axis
+        trial_axis = self.trial_axis
+        x_axis = self.x_axis
+        time_axis = self.time_axis
+
+        if subplot_axis is None and self.subplot_axis is not None:
+            subplot_axis = self.subplot_axis
+
+        if color_axis is None and self.color_axis is not None:
+            color_axis = self.color_axis
+
+        if x_axis is None and self.x_axis is not None:
+            x_axis = self.x_axis
+            
+        num_axes_in_args = (color_axis is not None or self.color_axis is not None) + (x_axis is not None or self.x_axis is not None) + (subplot_axis is not None or self.subplot_axis is not None)
         assert len(self.data.shape) == num_axes_in_args + 2, f'Incorrect number of axes arguments. There should only be {len(self.data.shape)} and you have {num_axes_in_args}'
-        fig = plt.figure(len(self.figs))
+        fig = plt.figure(len(self.figs) + self.starting_fig_num)
         self.figs.append(fig)
         data = self.data
-        if not subplots_axis:
-            subplots_axis = len(data.shape) 
+        
+        if subplot_axis is None:
+            subplot_axis = len(data.shape) 
             data = n.expand_dims(data, axis = -1)
             
-        if not colors_axis:
-            colors_axis = len(data.shape)
+        if color_axis is None:
+            color_axis = len(data.shape)
             data = n.expand_dims(data, axis = -1)            
 
-        if not x_axis:
+        if  x_axis is None:
             x_axis = len(data.shape)
             data = n.expand_dims(data, axis = -1)            
 
-        num_subplots = data.shape[subplots_axis]
-        num_colors = data.shape[colors_axis]
+        num_subplots = data.shape[subplot_axis]
+        num_colors = data.shape[color_axis]
         num_xs = data.shape[x_axis]
-        if x_vals is not None and x_ticks is None:
-            x_ticks = x_vals
+        if self.x_vals is not None and self.x_ticks is None:
+            self.x_ticks = self.x_vals
             
-        if x_vals is None:
-            x_vals = n.arange(num_xs)
+        if self.x_vals is None:
+            self.x_vals = n.arange(num_xs)
         
-        data = data.transpose(self.trials_axis, subplots_axis, colors_axis, x_axis, self.time_axis)
-        
-        mean = data[...,int(start_t*self.frames): int(end_t*self.frames)].mean(axis = 4).mean(axis = 0)
-        sd_err = n.std(data[..., int(start_t*self.frames): int(end_t*self.frames)].mean(axis = 4) , axis= 0)/n.sqrt(self.num_trials)
+        data = data.transpose(self.trial_axis, subplot_axis, color_axis, x_axis, self.time_axis)
+        mean = data[...,int(self.start_t*self.frames): int(self.end_t*self.frames)].mean(axis = 4).mean(axis = 0)
+        sd_err = n.std(data[..., int(self.start_t*self.frames): int(self.end_t*self.frames)].mean(axis = 4) , axis= 0)/n.sqrt(self.num_trials)
        
-        plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trials_axis]} flies')    
+        plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trial_axis]} flies')    
         for plot_num in n.arange(num_subplots):
             ax = plt.subplot(num_subplots, 1, plot_num + 1)
             plt.axhline(0, color = 'k', linestyle = '--')
             plt.axvline(0, color = 'k', linestyle = '--')
-            offset = 0
-            plt.xticks(x_vals, x_ticks)
-            plt.xlabel(x_label)
-            if colors_labels is not None:
-                patches =[mpatches.Patch(color = "C" + str(color), label = str(colors_labels[color])) for color in n.arange(num_colors)]
-                plt.legend(title = legend_title, handles=patches)
-
+            offset = 0.00
+            if self.x_ticks is not None:
+                plt.xticks(self.x_vals, self.x_ticks)
+            plt.xlabel(self.x_labels)
+            if self.color_labels is not None:
+                patches =[mpatches.Patch(color = "C" + str(color), label = str(self.color_labels[color])) for color in n.arange(num_colors)]
+                plt.legend(title = self.legend_title, handles=patches)
             for color in n.arange(num_colors):
-                plt.errorbar(x_vals + offset, mean[plot_num, color], yerr = sd_err[plot_num, color], marker = 'o', ms = 9.0)
+                plt.errorbar(self.x_vals + offset, mean[plot_num, color], yerr = sd_err[plot_num, color], marker = 'o', ms = 9.0)
                 offset += num_xs*0.0005
 
                 
-    def plot_mean_resp_heatmap(self, x_axis = None, x_label = None, x_ticks= None, y_axis = None, y_label = None, y_ticks = None,  subplots_axis = None, subplots_labels = None, start_t = 0, end_t = 1, center_zero = False, cmap = 'viridis'):
+    def plot_mean_resp_heatmap(self, y_axis = None, y_labels = None, y_ticks = None, center_zero = False, cmap = 'viridis'):
+        subplot_axis = self.subplot_axis
+        color_axis = self.color_axis
+        trial_axis = self.trial_axis
+        x_axis = self.x_axis
+        time_axis = self.time_axis
+
         assert x_axis, "can't plot heatmap without x axis"
+        if y_axis is None and color_axis is not None:
+            y_axis = color_axis
+            if y_ticks is None:
+                y_ticks = self.color_labels
         assert y_axis, "can't plot heatmap without y axis"
         fig = plt.figure(len(self.figs) + self.starting_fig_num)
         self.figs.append(fig)
         data = []
                     
-        if subplots_axis:
-            data = self.data.transpose(self.trials_axis, subplots_axis, y_axis, x_axis, self.time_axis)
+        if subplot_axis is not None:
+            data = self.data.transpose(trial_axis, subplot_axis, y_axis, x_axis, time_axis)
         else:
-            subplots_axis = len(self.data.shape)
+            subplot_axis = len(self.data.shape)
             data = n.expand_dims(self.data, axis = -1)
-            data = data.transpose(self.trials_axis, subplots_axis, y_axis, x_axis, self.time_axis)
-        mean = data.mean(axis = 0)[..., self.frames*start_t:self.frames*end_t].mean(axis = -1)    
+            data = data.transpose(trial_axis, subplot_axis, y_axis, x_axis, time_axis)
+        mean = data.mean(axis = 0)[..., self.frames*self.start_t:self.frames*self.end_t].mean(axis = -1)    
         num_subplots = mean.shape[0]    
         
         plot_max = mean.max()
@@ -543,18 +590,18 @@ class Hasty_plotter():
             plot_max = n.abs(mean).max()
             plot_min = -plot_max
 
-        plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trials_axis]} flies')
+        plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trial_axis]} flies')
         for plot_num in n.arange(num_subplots):
             ax = plt.subplot(num_subplots, 1, plot_num + 1)
-            if subplots_labels:
-                ax.set_title(str(subplots_labels[plot_num-1]))
+            if self.subplot_labels is not None:
+                ax.set_title(str(self.subplot_labels[plot_num-1]))
             img = plt.imshow(mean[plot_num-1], cmap = cmap, vmin = plot_min, vmax = plot_max)
             plt.colorbar(img, cmap = cmap)
-            if x_ticks is None:
+            if self.x_ticks is None:
                 pass
             else:
                 ticks = n.arange(self.data.shape[x_axis])
-                plt.xticks(ticks, x_ticks)
+                plt.xticks(ticks, self.x_ticks)
             if y_ticks is None:
                 pass
             else:
@@ -562,8 +609,58 @@ class Hasty_plotter():
                 plt.yticks(ticks, y_ticks[::-1])
 
 
-            if x_label:
-               plt.xlabel(x_label) 
-            if y_label:
-               plt.ylabel(y_label)
-        self.num_figures += 1
+            if self.x_labels:
+               plt.xlabel(self.x_labels) 
+            if y_labels:
+               plt.ylabel(y_labels)
+        
+    def plot_indv_mean_resps(self):
+        subplot_axis = self.subplot_axis
+        color_axis = self.color_axis
+        trial_axis = self.trial_axis
+        x_axis = self.x_axis
+        time_axis = self.time_axis
+        color_labels = self.color_labels
+        
+        num_axes_in_args = (color_axis is not None) + (x_axis is not None) + (subplot_axis is not None)
+        assert len(self.data.shape) == num_axes_in_args + 2, f'Incorrect number of axes arguments. There should only be {len(self.data.shape)} and you have {num_axes_in_args}'
+        fig = plt.figure(len(self.figs) + self.starting_fig_num)
+        self.figs.append(fig)
+        data = self.data
+        if subplot_axis is None and self.subplot_axis is None:
+            subplot_axis = len(data.shape) + 1
+            data = n.expand_dims(data, axis = -1)
+            
+        if color_axis is None and self.color_axis is None:
+            color_axis = len(data.shape) + 1
+            data = n.expand_dims(data, axis = -1)            
+
+        if x_axis is None and self.x_axis is None:
+            color_axis = len(data.shape) + 1
+            data = n.expand_dims(data, axis = -1)            
+
+        num_subplots = data.shape[subplot_axis]
+        num_colors = data.shape[color_axis]
+        len_x_axis = data.shape[x_axis]
+            
+        data = data.transpose(self.trial_axis, subplot_axis, color_axis, x_axis, self.time_axis)
+        mean = data[..., self.frames*self.start_t:self.frames*self.end_t].mean(axis = 4)         
+        plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trial_axis]} flies')    
+        for plot_num in n.arange(num_subplots):
+            ax = plt.subplot(num_subplots, 1, plot_num + 1)
+            plt.axhline(0, color = 'k', linestyle = '--')
+            plt.axvline(0, color = 'k', linestyle = '--')
+            offset = 0.02
+            plt.xticks(n.arange(len_x_axis), self.x_ticks)
+            plt.xlabel(self.x_labels)
+            if color_labels is not None:
+                patches =[mpatches.Patch(color = "C" + str(color), label = str(color_labels[color])) for color in n.arange(num_colors)]
+                plt.legend(title = self.legend_title, handles=patches)
+
+            for color in n.arange(num_colors):
+                offset = 0
+                for trial in mean:
+                    plt.scatter(n.arange(len_x_axis) + offset, trial[plot_num, color])
+                    offset += len_x_axis*0.0005
+        
+        
