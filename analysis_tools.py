@@ -412,7 +412,7 @@ class Data_handler():
             
 class Hasty_plotter():
     ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing. If you want to put in data that is already time averaged, then just make sure you expand_dims on it so that it has a time axis which is size 1. '''
-    def __init__(self, data, trial_axis = 0,  time_axis = None, plot_title= None, starting_fig_num = 0, color_axis = None, color_labels = None,subplot_axis = None, subplot_labels = None,  x_axis = None, figure_axis = None,  legend_title = None, start_t = 0, end_t = 1, x_vals = None, x_ticks = None, x_label = None):
+    def __init__(self, data, trial_axis = 0,  time_axis = None, plot_title= None, starting_fig_num = 0, color_axis = None, color_labels = None,subplot_axis = None, subplot_labels = None,  x_axis = None, figure_axis = None,  legend_title = None, start_t = 0, end_t = 1, x_vals = None, x_ticks = None, x_label = None, y_axis = None, y_labels = None, y_ticks = None):
         assert len(data.shape) >= 3, 'Data must be at least 3 dimensions to plot.'
         self.time_axis = time_axis
         self.data = data
@@ -424,6 +424,9 @@ class Hasty_plotter():
         self.x_vals = x_vals
         self.x_ticks = x_ticks
         self.x_labels = x_label
+        self.y_axis = y_axis
+        self.y_labels = y_labels
+        self.y_ticks = y_ticks
         self.subplot_axis = subplot_axis
         self.subplot_labels = subplot_labels
         self.figure_axis = figure_axis
@@ -592,14 +595,17 @@ class Hasty_plotter():
                 offset += num_xs*0.0005
 
                 
-    def plot_mean_resp_heatmap(self, y_axis = None, y_labels = None, y_ticks = None, center_zero = False, cmap = 'viridis', **kwargs):
+    def plot_mean_resp_heatmap(self,  center_zero = False, cmap = 'viridis', **kwargs):
         self.update_axes_info(**kwargs)
         subplot_axis = self.subplot_axis
         color_axis = self.color_axis
         trial_axis = self.trial_axis
         x_axis = self.x_axis
         time_axis = self.time_axis
-
+        y_axis = self.y_axis
+        y_ticks = self.y_ticks
+        y_labels = self.y_labels
+        
         assert x_axis, "can't plot heatmap without x axis"
         if y_axis is None and color_axis is not None:
             y_axis = color_axis
