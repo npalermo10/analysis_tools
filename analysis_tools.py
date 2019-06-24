@@ -33,6 +33,14 @@ def f_minus_i(data, i0, i1, f0,f1 = None, time_axis = None):
 
     return f_frames - i_mean
 
+def reject_outliers(data, m = 2, to_zero = True):
+    medns =n.median(data, axis = len(data.shape)-1)
+    medns_exp = n.expand_dims(medns, -1).repeat(data.shape[-1], axis = -1)
+    d = n.abs(data - medns_exp)
+    mdev = n.expand_dims(n.median(d, axis = -1), -1).repeat(data.shape[-1], axis = -1)
+    s = d/mdev
+    data[s>m] = 0
+    return data
 
 class WBA_trial():
     '''A class to read, hold and analyze wba data from wing beat analyzers'''
@@ -412,7 +420,7 @@ class Data_handler():
             
 class Hasty_plotter():
     ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing. If you want to put in data that is already time averaged, then just make sure you expand_dims on it so that it has a time axis which is size 1. '''
-    def __init__(self, data, trial_axis = 0,  time_axis = None, plot_title= None, starting_fig_num = 0, color_axis = None, color_labels = None,subplot_axis = None, subplot_labels = None,  x_axis = None, figure_axis = None,  legend_title = None, start_t = 0, end_t = 1, x_vals = None, x_ticks = None, x_label = None, y_axis = None, y_labels = None, y_ticks = None):
+    def __init__(self, data, trial_axis = 0,  time_axis = None, plot_title= None, starting_fig_num = 0, color_axis = None, color_labels = None,subplot_axis = None, subplot_labels = None,  x_axis = None, figure_axis = None,  legend_title = None, start_t = 0, end_t = 1, x_vals = None, x_ticks = None, x_label = None, y_axis = None, y_labels = None, y_ticks = None, rm_outliers = False):
         assert len(data.shape) >= 3, 'Data must be at least 3 dimensions to plot.'
         self.time_axis = time_axis
         self.data = data
@@ -436,6 +444,7 @@ class Hasty_plotter():
         if time_axis == None:
             self.time_axis = len(data.shape) -1
         self.plot_title = plot_title
+        self.rm_outliers = rm_outliers
         self.num_trials = self.data.shape[trial_axis]
         self.frames = self.data.shape[self.time_axis]
         self.starting_fig_num = starting_fig_num # so you can make a new hasty plotter object that won't override figs from another
@@ -575,9 +584,12 @@ class Hasty_plotter():
             self.x_vals = n.arange(num_xs)
         
         data = data.transpose(self.trial_axis, subplot_axis, color_axis, x_axis, self.time_axis)
-        mean = data[...,int(self.start_t*self.frames): int(self.end_t*self.frames)].mean(axis = 4).mean(axis = 0)
-        sd_err = n.std(data[..., int(self.start_t*self.frames): int(self.end_t*self.frames)].mean(axis = 4) , axis= 0)/n.sqrt(self.num_trials)
-       
+        data_means_over_t = data[...,int(self.start_t*self.frames): int(self.end_t*self.frames)].mean(axis = 4)
+        data_means_over_t = reject_outliers(data_means_over_t)
+            
+        mean = data_means_over_t.mean(axis = 0)
+        sd_err = n.std(data_means_over_t, axis= 0)/n.sqrt(data_means_over_t.shape[trial_axis])
+         
         plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trial_axis]} flies')    
         for plot_num in n.arange(num_subplots):
             ax = plt.subplot(num_subplots, 1, plot_num + 1)
