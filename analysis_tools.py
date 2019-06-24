@@ -682,15 +682,15 @@ class Hasty_plotter():
         self.figs.append(fig)
         data = self.data
         if subplot_axis is None and self.subplot_axis is None:
-            subplot_axis = len(data.shape) + 1
+            subplot_axis = len(data.shape)
             data = n.expand_dims(data, axis = -1)
             
         if color_axis is None and self.color_axis is None:
-            color_axis = len(data.shape) + 1
+            color_axis = len(data.shape)
             data = n.expand_dims(data, axis = -1)            
 
         if x_axis is None and self.x_axis is None:
-            color_axis = len(data.shape) + 1
+            color_axis = len(data.shape)
             data = n.expand_dims(data, axis = -1)            
 
         num_subplots = data.shape[subplot_axis]
