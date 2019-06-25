@@ -585,7 +585,8 @@ class Hasty_plotter():
         
         data = data.transpose(self.trial_axis, subplot_axis, color_axis, x_axis, self.time_axis)
         data_means_over_t = data[...,int(self.start_t*self.frames): int(self.end_t*self.frames)].mean(axis = 4)
-        data_means_over_t = reject_outliers(data_means_over_t)
+        if self.rm_outliers:
+            data_means_over_t = reject_outliers(data_means_over_t)
             
         mean = data_means_over_t.mean(axis = 0)
         sd_err = n.std(data_means_over_t, axis= 0)/n.sqrt(data_means_over_t.shape[trial_axis])
