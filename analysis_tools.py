@@ -499,8 +499,11 @@ class Hasty_plotter():
         color_labels = self.color_labels
         trial_axis = self.trial_axis
         time_axis = self.time_axis
+        x_axis = self.x_axis
         
         assert self.frames > 1, f"You can't plot time series data if you have no time series. You only have {self.frames} frame of data."
+        if x_axis is not None and subplot_axis is None:
+            subplot_axis = x_axis
         num_axes_in_args = (color_axis is not None) +  (subplot_axis is not None)
         assert len(self.data.shape) == 2 + num_axes_in_args, f'Incorrect number of axes arguments. There should only be {len(self.data.shape)} and you have {num_axes_in_args}'
         fig = plt.figure(len(self.figs) + self.starting_fig_num)
