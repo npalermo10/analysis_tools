@@ -33,6 +33,34 @@ def f_minus_i(data, i0, i1, f0,f1 = None, time_axis = None):
 
     return f_frames - i_mean
 
+def fill_with_nans(data_list):
+    num_elements = len(data_list)
+    min_num_frames = min(lmr.shape[-1] for lmr in data_list)
+    data_list = [lmr[...,:min_num_frames].squeeze(0) for lmr in data_list]
+
+    list_lens = n.array([data_list[element].shape[0] for element in n.arange(num_elements)])
+    amts_to_add = n.max(list_lens) - list_lens
+    for i_amt_to_add, amt_to_add in enumerate(amts_to_add):
+        for i in n.arange(amt_to_add):
+            nan_array = n.full(n.append([1], data_list[i_amt_to_add].shape[1:]), n.nan)
+            data_list[i_amt_to_add]  = n.vstack([nan_array, data_list[i_amt_to_add]]) # replace missing data
+            print('added nans')
+    return data_list
+
+def fill_with_zeros(data_list):
+    num_elements = len(data_list)
+    min_num_frames = min(lmr.shape[-1] for lmr in data_list)
+    data_list = [lmr[...,:min_num_frames].squeeze(0) for lmr in data_list]
+
+    list_lens = n.array([data_list[element].shape[0] for element in n.arange(num_elements)])
+    amts_to_add = n.max(list_lens) - list_lens
+    for i_amt_to_add, amt_to_add in enumerate(amts_to_add):
+        for i in n.arange(amt_to_add):
+            zeros_array = n.zeros(n.append([1], data_list[i_amt_to_add].shape[1:]))
+            data_list[i_amt_to_add]  = n.vstack([zeros_array, data_list[i_amt_to_add]]) # replace missing data
+            print('added zeros')
+    return data_list
+
 def reject_outliers(data, m = 2, to_zero = True):
     medns =n.median(data, axis = len(data.shape)-1)
     medns_exp = n.expand_dims(medns, -1).repeat(data.shape[-1], axis = -1)
@@ -420,7 +448,7 @@ class Data_handler():
             
 class Hasty_plotter():
     ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing. If you want to put in data that is already time averaged, then just make sure you expand_dims on it so that it has a time axis which is size 1. '''
-    def __init__(self, data, trial_axis = 0,  time_axis = None, plot_title= None, starting_fig_num = 0, color_axis = None, color_labels = None,subplot_axis = None, subplot_labels = None,  x_axis = None, figure_axis = None,  legend_title = None, start_t = 0, end_t = 1, x_vals = None, x_ticks = None, x_label = None, y_axis = None, y_labels = None, y_ticks = None, rm_outliers = False):
+    def __init__(self, data, trial_axis = 0,  time_axis = None, plot_title= None, starting_fig_num = 0, color_axis = None, color_labels = None,subplot_axis = None, subplot_labels = None,  x_axis = None, figure_axis = None,  legend_title = None, start_t = 0, end_t = 1, x_vals = None, x_ticks = None, x_label = None, y_axis = None, y_label = None,  y_vals = None, y_ticks = None, rm_outliers = False):
         assert len(data.shape) >= 3, 'Data must be at least 3 dimensions to plot.'
         self.time_axis = time_axis
         self.data = data
@@ -431,9 +459,10 @@ class Hasty_plotter():
         self.x_axis = x_axis
         self.x_vals = x_vals
         self.x_ticks = x_ticks
-        self.x_labels = x_label
+        self.x_label = x_label
         self.y_axis = y_axis
-        self.y_labels = y_labels
+        self.y_label = y_label
+        self.y_vals = y_vals
         self.y_ticks = y_ticks
         self.subplot_axis = subplot_axis
         self.subplot_labels = subplot_labels
@@ -456,7 +485,7 @@ class Hasty_plotter():
                           'color_axis' : self.color_axis,
                           'color_labels' : self.color_labels,
                           'x_axis' : self.x_axis,
-                          'x_labels': self.x_labels,
+                          'x_label': self.x_label,
         }
         for kwarg in kwargs:
             if kwarg == 'subplot_axis':
@@ -464,17 +493,17 @@ class Hasty_plotter():
                     if kwargs['subplot_axis'] == orig_axes_info['color_axis']:
                         self.subplot_labels = orig_axes_info['color_labels']
                     if kwargs['subplot_axis'] == orig_axes_info['x_axis']:
-                        self.subplot_labels = orig_axes_info['x_labels']
+                        self.subplot_labels = orig_axes_info['x_label']
                 self.subplot_axis = kwargs['subplot_axis']
             if kwarg == 'color_axis':
                 if 'color_labels' not in kwargs:
                     if kwargs['color_axis'] == orig_axes_info['subplot_axis']:
                         self.color_labels = orig_axes_info['subplot_labels']
                     if kwargs['color_axis'] == orig_axes_info['x_axis']:
-                        self.color_labels = orig_axes_info['x_labels']
+                        self.color_labels = orig_axes_info['x_label']
                 self.color_axis = kwargs['color_axis']
             if kwarg == 'x_axis':
-                if 'x_labels' not in kwargs:
+                if 'x_label' not in kwargs:
                     if kwargs['x_axis'] == orig_axes_info['subplot_axis']:
                         self.x_labels = orig_axes_info['subplot_labels']
                     if kwargs['x_axis'] == orig_axes_info['color_axis']:
@@ -522,8 +551,8 @@ class Hasty_plotter():
         
         data = data.transpose(trial_axis, subplot_axis, color_axis, time_axis)
         
-        mean = n.mean(data, axis = 0)
-        sd_err = n.std(data, axis = 0)/n.sqrt(data.shape[0])
+        mean = n.nanmean(data, axis = 0)
+        sd_err = n.nanstd(data, axis = 0)/n.sqrt(data.shape[0])
         
         fig.suptitle(f'{self.plot_title} - {self.data.shape[trial_axis]} flies')    
         for plot_num in n.arange(num_subplots):
@@ -602,7 +631,8 @@ class Hasty_plotter():
             offset = 0.00
             if self.x_ticks is not None:
                 plt.xticks(self.x_vals, self.x_ticks)
-            plt.xlabel(self.x_labels)
+            plt.xlabel(self.x_label)
+            plt.ylabel(self.y_label)
             if self.color_labels is not None:
                 patches =[mpatches.Patch(color = "C" + str(color), label = str(self.color_labels[color])) for color in n.arange(num_colors)]
                 plt.legend(title = self.legend_title, handles=patches)
@@ -620,7 +650,7 @@ class Hasty_plotter():
         time_axis = self.time_axis
         y_axis = self.y_axis
         y_ticks = self.y_ticks
-        y_labels = self.y_labels
+        y_labels = self.y_label
         
         assert x_axis, "can't plot heatmap without x axis"
         if y_axis is None and color_axis is not None:
@@ -666,12 +696,12 @@ class Hasty_plotter():
                 plt.yticks(ticks, y_ticks[::-1])
 
 
-            if self.x_labels:
-               plt.xlabel(self.x_labels) 
-            if y_labels:
-               plt.ylabel(y_labels)
+            if self.x_label:
+               plt.xlabel(self.x_label) 
+            if y_label:
+               plt.ylabel(y_label)
         
-    def plot_indv_mean_resps(self, **kwargs):
+    def plot_indv_mean_resps(self, regression = False, **kwargs):
         self.update_axes_info(**kwargs)
         subplot_axis = self.subplot_axis
         color_axis = self.color_axis
@@ -700,6 +730,13 @@ class Hasty_plotter():
         num_subplots = data.shape[subplot_axis]
         num_colors = data.shape[color_axis]
         len_x_axis = data.shape[x_axis]
+
+        if self.x_vals is not None and self.x_ticks is None:
+            self.x_ticks = self.x_vals
+            
+        if self.x_vals is None:
+            self.x_vals = n.arange(num_xs)
+
             
         data = data.transpose(self.trial_axis, subplot_axis, color_axis, x_axis, self.time_axis)
         mean = data[..., self.frames*self.start_t:self.frames*self.end_t].mean(axis = 4)         
@@ -710,15 +747,20 @@ class Hasty_plotter():
             plt.axvline(0, color = 'k', linestyle = '--')
             offset = 0.02
             plt.xticks(n.arange(len_x_axis), self.x_ticks)
-            plt.xlabel(self.x_labels)
+            plt.xlabel(self.x_label)
             if color_labels is not None:
                 patches =[mpatches.Patch(color = "C" + str(color), label = str(color_labels[color])) for color in n.arange(num_colors)]
                 plt.legend(title = self.legend_title, handles=patches)
-
             for color in n.arange(num_colors):
                 offset = 0
+                if regression:
+                    xs = n.hstack(n.array([self.x_vals]*mean.shape[0]))
+                    ys = n.hstack(mean[:, plot_num, color])
+                    slope, intercept, r_value, p_value, std_err = stats.linregress(xs, ys)
+                    plt.plot(xs, intercept + slope*xs, 'r', label='fitted line', color = "C" + str(color))
+                   
                 for trial in mean:
-                    plt.scatter(n.arange(len_x_axis) + offset, trial[plot_num, color], color = "C" + str(color))
+                    plt.scatter(self.x_vals + offset, trial[plot_num, color], color = "C" + str(color))
                     offset += n.diff(n.arange(len_x_axis), n = 1).mean()*0.005
         
         
