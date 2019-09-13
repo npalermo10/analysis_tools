@@ -737,9 +737,10 @@ class Hasty_plotter():
         if self.x_vals is None:
             self.x_vals = n.arange(num_xs)
 
-            
         data = data.transpose(self.trial_axis, subplot_axis, color_axis, x_axis, self.time_axis)
-        mean = data[..., self.frames*self.start_t:self.frames*self.end_t].mean(axis = 4)         
+        mean = data[..., self.frames*self.start_t:self.frames*self.end_t].mean(axis = 4)
+        if self.rm_outliers:
+            mean = reject_outliers(mean)
         plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trial_axis]} flies')    
         for plot_num in n.arange(num_subplots):
             ax = plt.subplot(num_subplots, 1, plot_num + 1)
