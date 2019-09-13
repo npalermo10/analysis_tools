@@ -758,7 +758,7 @@ class Hasty_plotter():
                     xs = n.hstack(n.array([self.x_vals]*mean.shape[0]))
                     ys = n.hstack(mean[:, plot_num, color])
                     slope, intercept, r_value, p_value, std_err = stats.linregress(xs, ys)
-                    plt.plot(xs, intercept + slope*xs, 'r', label='fitted line', color = "C" + str(color))
+                    plt.plot(xs, intercept + slope*xs, 'r', label='fitted line', color = "C" + str(color), linewidth =2.0)
                    
                 for trial in mean:
                     plt.scatter(self.x_vals + offset, trial[plot_num, color], color = "C" + str(color))
