@@ -752,8 +752,9 @@ class Hasty_plotter():
             if color_labels is not None:
                 patches =[mpatches.Patch(color = "C" + str(color), label = str(color_labels[color])) for color in n.arange(num_colors)]
                 plt.legend(title = self.legend_title, handles=patches)
+            offset = 0    
             for color in n.arange(num_colors):
-                offset = 0
+                
                 if regression:
                     xs = n.hstack(n.array([self.x_vals]*mean.shape[0]))
                     ys = n.hstack(mean[:, plot_num, color])
@@ -761,7 +762,8 @@ class Hasty_plotter():
                     plt.plot(xs, intercept + slope*xs, 'r', label='fitted line', color = "C" + str(color), linewidth =2.0)
                    
                 for trial in mean:
-                    plt.scatter(self.x_vals + offset, trial[plot_num, color], color = "C" + str(color))
-                    offset += n.diff(n.arange(len_x_axis), n = 1).mean()*0.005
-        
+                    rgb_colors = n.array(plt.rcParams['axes.prop_cycle'].by_key()['color'])
+                    rgb_color = n.hstack([rgb_colors[color], [0.65]])
+                    plt.scatter(self.x_vals + offset , trial[plot_num, color], color = rgb_color, s = 8)
+                offset += 0.1    
         
