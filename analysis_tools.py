@@ -17,7 +17,7 @@ green = [0.3333333333333333, 0.6588235294117647, 0.40784313725490196]
 
 def f_minus_i(data, i0, i1, f0,f1 = None, time_axis = None):
     if time_axis is None:
-        time_axis = len(data.shape)
+        time_axis = len(data.shape)-1
     if f1 is None:
         f1 = data.shape[time_axis]
     num_axes = len(data.shape)
@@ -59,7 +59,7 @@ def fill_with_zeros(data_list):
             zeros_array = n.zeros(n.append([1], data_list[i_amt_to_add].shape[1:]))
             data_list[i_amt_to_add]  = n.vstack([zeros_array, data_list[i_amt_to_add]]) # replace missing data
             print('added zeros')
-    return data_list
+    return n.array(data_list)
 
 def reject_outliers(data, m = 2, to_zero = True):
     medns =n.median(data, axis = len(data.shape)-1)
