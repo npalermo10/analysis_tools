@@ -390,8 +390,9 @@ class Array_builder():
         mod_coords = n.stack(n.meshgrid(*mod_cond_el), axis = len(self.conditions)+1)
         mod_coords_shaped = mod_coords.reshape((-1, len(self.conditions)+1))
 
-        self.lmr = n.zeros(n.hstack([self.d.num_trials, n.array([len(condition.elements) for condition in self.conditions]), self.trial_len]))
-
+        self.lmr = n.empty(n.hstack([self.d.num_trials, n.array([len(condition.elements) for condition in self.conditions]), self.trial_len]))
+        self.lmr.fill(n.nan)
+        
         self.raw_channel_data = n.array([n.zeros(n.hstack([self.d.num_trials, n.array([len(condition.elements) for condition in self.conditions]), self.trial_len])) for channel in self.raw_channels])
         self.d.set_return(start_pos=0, end_pos=self.trial_len)
         for i_coord, coord in enumerate(coords_shaped):
@@ -407,7 +408,8 @@ class Array_builder():
 
             except:
                 print(f'error importing raw data channel')
-        self.lpr = n.zeros(n.hstack([self.d.num_trials, n.array([len(condition.elements) for condition in self.conditions]), self.trial_len]))
+        self.lpr = n.empty(n.hstack([self.d.num_trials, n.array([len(condition.elements) for condition in self.conditions]), self.trial_len]))
+        self.lpr.fill(n.nan)
                 
         self.d.set_return(returned_value= 'lpr', start_pos=0, end_pos=self.trial_len)
         for i_coord, coord in enumerate(coords_shaped):
@@ -616,12 +618,12 @@ class Hasty_plotter():
             self.x_vals = n.arange(num_xs)
         
         data = data.transpose(self.trial_axis, subplot_axis, color_axis, x_axis, self.time_axis)
-        data_means_over_t = data[...,int(self.start_t*self.frames): int(self.end_t*self.frames)].mean(axis = 4)
+        data_means_over_t = n.nanmean(data[...,int(self.start_t*self.frames): int(self.end_t*self.frames)], axis = 4)
         if self.rm_outliers:
             data_means_over_t = reject_outliers(data_means_over_t)
             
-        mean = data_means_over_t.mean(axis = 0)
-        sd_err = n.std(data_means_over_t, axis= 0)/n.sqrt(data_means_over_t.shape[trial_axis])
+        mean = n.nanmean(data_means_over_t, axis = 0)
+        sd_err = n.nanstd(data_means_over_t, axis= 0)/n.sqrt(data_means_over_t.shape[trial_axis])
          
         plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trial_axis]} flies')    
         for plot_num in n.arange(num_subplots):
