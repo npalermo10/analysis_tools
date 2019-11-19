@@ -61,13 +61,16 @@ def fill_with_zeros(data_list):
             print('added zeros')
     return n.array(data_list)
 
-def reject_outliers(data, m = 2, to_zero = True):
-    medns =n.median(data, axis = len(data.shape)-1)
-    medns_exp = n.expand_dims(medns, -1).repeat(data.shape[-1], axis = -1)
+def reject_outliers(data, m = 6):
+    medns =n.median(data, axis = 0)
+    medns_exp = n.expand_dims(medns, 0).repeat(data.shape[0], axis = 0)
     d = n.abs(data - medns_exp)
-    mdev = n.expand_dims(n.median(d, axis = -1), -1).repeat(data.shape[-1], axis = -1)
+    mdev = n.expand_dims(n.median(d, axis = 0), 0).repeat(data.shape[0], axis = 0)
     s = d/mdev
     data[s>m] = 0
+    num_outliers = data[s>m].shape[0]
+    tot_data = data.flatten().shape[0]
+    print(f"{num_outliers} outliers removed out of {tot_data}")
     return data
 
 class WBA_trial():
