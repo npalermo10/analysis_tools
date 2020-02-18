@@ -66,7 +66,7 @@ def fill_with_zeros(data_list):
             print('added zeros')
     return n.array(data_list)
 
-def reject_outliers(data, m = 6):
+def reject_outliers(data, m = 3):
     medns =n.median(data, axis = 0)
     medns_exp = n.expand_dims(medns, 0).repeat(data.shape[0], axis = 0)
     d = n.abs(data - medns_exp)
