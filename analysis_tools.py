@@ -15,6 +15,11 @@ blue = [0.2980392156862745, 0.4470588235294118, 0.6901960784313725]
 
 green = [0.3333333333333333, 0.6588235294117647, 0.40784313725490196]
 
+def get_fpo_divisor(data, time_axis = -1):
+    fpo_mean_expanded = n.expand_dims(data.mean(axis = time_axis), axis = time_axis).repeat(data.shape[time_axis], axis = time_axis)
+    standardized_fpo_mean_expanded = fpo_mean_expanded-n.nanmin(fpo_mean_expanded) + 1
+    return standardized_fpo_mean_expanded
+
 def f_minus_i(data, i0, i1, f0,f1 = None, time_axis = None):
     if time_axis is None:
         time_axis = len(data.shape)-1
