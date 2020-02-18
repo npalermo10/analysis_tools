@@ -631,6 +631,8 @@ class Hasty_plotter():
         plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trial_axis]} flies')    
         for plot_num in n.arange(num_subplots):
             ax = plt.subplot(num_subplots, 1, plot_num + 1)
+            if self.subplot_labels:
+                ax.title.set_text(self.subplot_labels[plot_num])
             plt.axhline(0, color = 'k', linestyle = '--')
             plt.axvline(0, color = 'k', linestyle = '--')
             offset = 0.00
@@ -749,6 +751,8 @@ class Hasty_plotter():
         plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trial_axis]} flies')    
         for plot_num in n.arange(num_subplots):
             ax = plt.subplot(num_subplots, 1, plot_num + 1)
+            if self.subplot_labels:
+                ax.title.set_text(self.subplot_labels[plot_num])
             plt.axhline(0, color = 'k', linestyle = '--')
             plt.axvline(0, color = 'k', linestyle = '--')
             offset = 0.02
