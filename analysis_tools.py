@@ -1,5 +1,5 @@
 import numpy as n
-import pylab as plt
+import matplotlib.pyplot as plt
 import scipy.cluster.vq as clust
 import os
 import matplotlib.patches as mpatches
