@@ -582,7 +582,7 @@ class Hasty_plotter():
                     patches =[mpatches.Patch(color = "C" + str(color), label = str(color_labels[color])) for color in n.arange(num_colors)]
                     plt.legend(title = self.legend_title, handles=patches)
         
-    def plot_mean_resp(self, **kwargs):
+    def plot_mean_resp(self, save_fig= False, save_name="plot", **kwargs):
         self.update_axes_info(**kwargs)
         subplot_axis = self.subplot_axis
         color_axis = self.color_axis
@@ -656,6 +656,10 @@ class Hasty_plotter():
                 plt.errorbar(self.x_vals + offset, mean[plot_num, color], yerr = sd_err[plot_num, color], marker = 'o', ms = 9.0, color = colors[color])
                 offset += (self.x_vals[1:] - self.x_vals[:-1]).mean()/num_xs*0.2
         
+        if save_fig:
+            save_name = save_name + ".svg"
+            plt.tight_layout()
+            plt.savefig(save_name, format = "svg")
                 
     def plot_mean_resp_heatmap(self,  center_zero = False, cmap = 'viridis', **kwargs):
         self.update_axes_info(**kwargs)
