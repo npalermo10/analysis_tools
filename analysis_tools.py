@@ -660,6 +660,7 @@ class Hasty_plotter():
             save_name = save_name + ".svg"
             plt.tight_layout()
             plt.savefig(save_name, format = "svg")
+        plt.show(block=False)
                 
     def plot_mean_resp_heatmap(self,  center_zero = False, cmap = 'viridis', **kwargs):
         self.update_axes_info(**kwargs)
