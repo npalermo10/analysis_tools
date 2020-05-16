@@ -458,7 +458,7 @@ class Data_handler():
             
 class Hasty_plotter():
     ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing. If you want to put in data that is already time averaged, then just make sure you expand_dims on it so that it has a time axis which is size 1. '''
-    def __init__(self, data, trial_axis = 0,  time_axis = None, plot_title= None, starting_fig_num = 0, color_axis = None, color_labels = None,subplot_axis = None, subplot_labels = None,  x_axis = None, figure_axis = None,  legend_title = None, start_t = 0, end_t = 1, x_vals = None, x_ticks = None, x_label = None, y_axis = None, y_label = None,  y_vals = None, y_ticks = None, rm_outliers = False):
+    def __init__(self, data, trial_axis = 0,  time_axis = None, plot_title= None, starting_fig_num = 0, color_axis = None, color_labels = None, color_list = None, subplot_axis = None, subplot_labels = None,  x_axis = None, figure_axis = None,  legend_title = None, start_t = 0, end_t = 1, x_vals = None, x_ticks = None, x_label = None, y_axis = None, y_label = None,  y_vals = None, y_ticks = None, rm_outliers = False):
         assert len(data.shape) >= 3, 'Data must be at least 3 dimensions to plot.'
         self.time_axis = time_axis
         self.data = data
@@ -466,6 +466,7 @@ class Hasty_plotter():
         self.trial_axis = trial_axis
         self.color_axis = color_axis
         self.color_labels = color_labels
+        self.color_list = color_list
         self.x_axis = x_axis
         self.x_vals = x_vals
         self.x_ticks = x_ticks
@@ -645,13 +646,16 @@ class Hasty_plotter():
                 plt.xticks(self.x_vals, self.x_ticks)
             plt.xlabel(self.x_label)
             plt.ylabel(self.y_label)
+            colors = ["C" + str(color) for color in n.arange(num_colors)]
+            if self.color_list is not None:
+                colors = self.color_list
             if self.color_labels is not None:
-                patches =[mpatches.Patch(color = "C" + str(color), label = str(self.color_labels[color])) for color in n.arange(num_colors)]
+                patches =[mpatches.Patch(color = colors[color], label = str(self.color_labels[color])) for color in n.arange(num_colors)]
                 plt.legend(title = self.legend_title, handles=patches)
             for color in n.arange(num_colors):
-                plt.errorbar(self.x_vals + offset, mean[plot_num, color], yerr = sd_err[plot_num, color], marker = 'o', ms = 9.0)
-                offset += num_xs*0.0005
-
+                plt.errorbar(self.x_vals + offset, mean[plot_num, color], yerr = sd_err[plot_num, color], marker = 'o', ms = 9.0, color = colors[color])
+                offset += (self.x_vals[1:] - self.x_vals[:-1]).mean()/num_xs*0.2
+        
                 
     def plot_mean_resp_heatmap(self,  center_zero = False, cmap = 'viridis', **kwargs):
         self.update_axes_info(**kwargs)
