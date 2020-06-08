@@ -372,20 +372,28 @@ class Condition():
         self.light_mod = light_mod
 
 class Array_builder():
-    ''' builds an array given condition objects in the correct order '''
-    def __init__(self, conditions, data_dir = './', raw_channels = [0,1,2,3]):
+    ''' builds an array given condition objects in the correct order. trial_len_type can be 'mean', 'bot_std', '2bot_std'. for mean, 50% of trials will be longer and 50% will be shorter. bot std means that 68% trials will be longer. 2bot_std means that 95% trials will be longer '''
+    def __init__(self, conditions, data_dir = './', raw_channels = [0,1,2,3], trial_len_type = 'mean'):
         
         conditions.sort(key=lambda x: x.light_num) # sort conditions based on light num
         self.conditions = conditions
         self.num_tests =  n.array([len(condition.elements) for condition in self.conditions]).prod()
         self.data_dir = data_dir
+        self.trial_len_type = trial_len_type
         self.raw_channels = raw_channels
         self.get_data()
                 
     def get_data(self):
         self.d = WBA_trials(self.data_dir, self.num_tests, n.arange(len(self.conditions))+ 2)
-
-        self.trial_len = int(n.mean([n.mean(trial.ends- trial.starts) for trial in self.d]))
+        trial_lens = n.array([trial.ends-trial.starts for trial in self.d])
+        trial_lens_mean = trial_lens.mean()
+        trial_lens_std = trial_lens.std()
+        if self.trial_len_type == 'bot_std':
+            self.trial_len = int(trial_lens.mean()-trial_lens.std())
+        if self.trial_len_type == '2bot_std':
+            self.trial_len = int(trial_lens.mean()-2*trial_lens.std())
+        if self.trial_len_type == 'mean':
+            self.trial_len= int(trial_lens_mean)
         cond_el = [[i_element for i_element, element in enumerate(condition.elements)] for i_condition, condition in enumerate(self.conditions)]
         cond_el.insert(0, n.arange(self.d.num_trials))
         coords = n.stack(n.meshgrid(*cond_el), axis = len(self.conditions)+1)
