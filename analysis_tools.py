@@ -79,7 +79,7 @@ def reject_outliers(data, m = 3):
 class WBA_trial():
     '''A class to read, hold and analyze wba data from wing beat analyzers'''
 
-    def __init__(self, data_fn, ind_chans=[2,3,4,5], nvals=2, debug=False):
+    def __init__(self, data_fn, ind_chans=[2,3,4,5], frame_flash_chans = [], nvals=2, debug=False):
         '''Read in the data'''
         self.debug = debug
         self.fn = data_fn
@@ -97,7 +97,10 @@ class WBA_trial():
         self.ends = bounds[1::2]
         assert len(self.starts) == len(self.ends), "Starts amt are not equal to ends amt. Data not used."
         self.num_tests = len(self.starts)
-        # self.count_flashes()
+        self.frame_flash_chans = frame_flash_chans
+        self.frame_flash_locs = None # defualt none unless a frame flash channel is inputted
+        for frame_flash_chan in self.frame_flash_chans:
+            self.get_frame_of_flashes()            
         self.set_return()
 
     def __repr__(self):
@@ -148,6 +151,18 @@ class WBA_trial():
         out = []
         for zero in self.zero_inds[locations]:
             out.append(self.wba[(zero + self.start_pos):(zero + self.end_pos)])
+        return n.array(out)
+
+    def fetch_trial_frame_of_flashes_data(self, channel, *args):
+        args = n.array(args).flatten()
+        # for each indexing channel, where do we match the args
+        locations = [self.edge_counts[self.ind_chans[i]] == args[i] for i in range(len(args))]
+        # where are the matches always true
+        self.locations = locations
+        locations = n.where(n.product(locations, 0))
+        if len(locations[0])==0: print ('no index matches')
+        out = []
+        out.append(self.frame_flash_locs[channel][locations])
         return n.array(out)
 
     def get_edge_inds(self, channel, nvals=n.array([0.5, 1.0]), duration=9, thresh=.09):
@@ -205,6 +220,28 @@ class WBA_trial():
             flash_counts.append(counts)
         self.flash_counts = n.array(flash_counts).T
 
+    def get_frame_of_flashes(self, nvals=n.array([0.5, 1.0]), duration=9, thresh=.09):
+        self.frame_flash_locs= []
+        for frame_flash_chan in self.frame_flash_chans:
+            frame_flash_chan += 2 #add two because first two channels are always l and r WBAs
+            d = self.data[frame_flash_chan].copy()
+            d -= d.mean()
+            d /= d.max()
+            ptp = d.ptp()
+            hi_inds = n.where(d>(d.mean() + ptp*thresh))[0]
+            # find the boundaries of above thresh regions (skip more than one index)
+            d_hi_inds = n.ediff1d(hi_inds, to_begin=duration, to_end=duration)
+            strts = n.where(d_hi_inds>=duration)[0]
+            strt_inds = n.take(hi_inds, strts[:-1])
+            # one point is higher than its neighbors, return one index for each region
+            # peaks = n.array([d[strt_ind:strt_ind + duration].max() for strt_ind in strt_inds])
+            # how best to sort into nval groups?
+            # centroids, vals = clust.kmeans2(peaks, nvals)
+            # since the centroids are in a random order (and 1 less than I want):
+            # vvals = n.choose(vals, centroids.argsort() + 1)
+            strt_mid_end_inds = strt_inds.reshape([-1,3])
+            self.frame_flash_locs.append((strt_mid_end_inds - n.expand_dims(strt_mid_end_inds[:,0], 0).T.repeat(3, axis = 1))[:,1])
+                        
     def response(self, test_inds, bounds=[50,100], ref_bounds=None, neg_inds=None):
         '''Return the mean response that is inside of the bounds of
         the single trace specified by test_inds. If ref_bounds are
@@ -256,7 +293,7 @@ class WBA_trial():
 class WBA_trials ():
     '''A class to read, hold and analyze wba data from wing beat analyzers'''
 
-    def __init__ (self, data_dir, num_tests=8, ind_chans=[2,3,4,5], debug=False):
+    def __init__ (self, data_dir, num_tests=8, ind_chans=[2,3,4,5], frame_flash_chans = [], debug=False):
         '''Read in the data'''
         self.debug = debug
         fns = os.listdir(data_dir)
@@ -268,7 +305,7 @@ class WBA_trials ():
         trials = []
         for fn in self.fns:
             try:
-                trials.append(WBA_trial(fn, ind_chans))
+                trials.append(WBA_trial(fn, ind_chans, frame_flash_chans = frame_flash_chans))
                 print(fn)
             except:
                 print('X ' + fn + ' X')
@@ -334,6 +371,16 @@ class WBA_trials ():
         out = trial.fetch_trial_raw_data(*trial_args)[0]
         return out
 
+    def fetch_trials_frame_flash_data(self, *args):
+        self.a = args
+        trial = self.trials.__getitem__(self.a[1])
+        trial_args = n.hstack([self.a[0], self.a[2:]])
+        if self.debug:
+            print ('getitem {}'.format(trial))
+            
+        out = trial.fetch_trial_frame_of_flashes_data(*trial_args)[0]
+        return out
+
     def response(self, test_inds=[0], bounds=[50,100],
                  ref_bounds=None, neg_test_inds=None):
         return n.array([trial.response(test_inds, bounds, ref_bounds, neg_test_inds)
@@ -373,18 +420,18 @@ class Condition():
 
 class Array_builder():
     ''' builds an array given condition objects in the correct order. trial_len_type can be 'mean', 'bot_std', '2bot_std'. for mean, 50% of trials will be longer and 50% will be shorter. bot std means that 68% trials will be longer. 2bot_std means that 95% trials will be longer '''
-    def __init__(self, conditions, data_dir = './', raw_channels = [0,1,2,3], trial_len_type = 'mean'):
-        
+    def __init__(self, conditions, data_dir = './', raw_channels = [0,1,2,3], frame_flash_chans = [], trial_len_type = 'mean'):
         conditions.sort(key=lambda x: x.light_num) # sort conditions based on light num
         self.conditions = conditions
         self.num_tests =  n.array([len(condition.elements) for condition in self.conditions]).prod()
         self.data_dir = data_dir
         self.trial_len_type = trial_len_type
         self.raw_channels = raw_channels
+        self.frame_flash_chans = frame_flash_chans
         self.get_data()
                 
     def get_data(self):
-        self.d = WBA_trials(self.data_dir, self.num_tests, n.arange(len(self.conditions))+ 2)
+        self.d = WBA_trials(self.data_dir, self.num_tests, n.arange(len(self.conditions))+ 2, frame_flash_chans = self.frame_flash_chans)
         trial_lens = n.array([trial.ends-trial.starts for trial in self.d])
         trial_lens_mean = trial_lens.mean()
         trial_lens_std = trial_lens.std()
@@ -408,6 +455,7 @@ class Array_builder():
         self.lmr.fill(n.nan)
         
         self.raw_channel_data = n.array([n.zeros(n.hstack([self.d.num_trials, n.array([len(condition.elements) for condition in self.conditions]), self.trial_len])) for channel in self.raw_channels])
+        self.frame_flash_data = n.array([n.zeros(n.hstack([self.d.num_trials, n.array([len(condition.elements) for condition in self.conditions])])) for channel in self.frame_flash_chans])        
         self.d.set_return(start_pos=0, end_pos=self.trial_len)
         for i_coord, coord in enumerate(coords_shaped):
             slices = tuple([slice(c, c+1, None) for i_c, c in enumerate(coord)])
@@ -422,6 +470,13 @@ class Array_builder():
 
             except:
                 print(f'error importing raw data channel')
+
+            try:
+                for i_channel, channel in enumerate(self.frame_flash_chans):
+                    self.frame_flash_data[i_channel][slices] = self.d.fetch_trials_frame_flash_data(i_channel, *mod_coords_shaped[i_coord])
+            except:
+                print(f'error importing frame flash data channel')
+    
         self.lpr = n.empty(n.hstack([self.d.num_trials, n.array([len(condition.elements) for condition in self.conditions]), self.trial_len]))
         self.lpr.fill(n.nan)
                 
@@ -432,8 +487,8 @@ class Array_builder():
                 self.lpr[slices] = self.d.fetch_trials_data(*mod_coords_shaped[i_coord])
             except:
                 print(f"error loading coordinate: {coord} into lights index {mod_coords_shaped[i_coord]} into lpr. check that your light mods are correct and conditions are in the correct order. Is target array shape: {self.lpr.shape}? If not there might be a problem with file: {self.d[coord[0]]}")
-            
 
+        
 class Data_handler():
     ''' this class gets the mean and std err for data. Takes either data array or list. Also performs hasty stats.'''
     def __init__(self, data, trial_axis = 0, time_axis = -1):
