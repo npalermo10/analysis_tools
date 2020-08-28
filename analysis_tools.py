@@ -434,7 +434,9 @@ class Array_builder():
         self.d = WBA_trials(self.data_dir, self.num_tests, n.arange(len(self.conditions))+ 2, frame_flash_chans = self.frame_flash_chans)
         trial_lens = n.array([trial.ends-trial.starts for trial in self.d])
         trial_lens_mean = trial_lens.mean()
+        self.trial_lens_mean = trial_lens_mean
         trial_lens_std = trial_lens.std()
+        self.trial_lens_std = trial_lens_std
         if self.trial_len_type == 'bot_std':
             self.trial_len = int(trial_lens.mean()-trial_lens.std())
         if self.trial_len_type == '2bot_std':
@@ -783,7 +785,7 @@ class Hasty_plotter():
             if y_label:
                plt.ylabel(y_label)
         
-    def plot_indv_mean_resps(self, regression = False, **kwargs):
+    def plot_indv_mean_resps(self, regression = False, save_fig= False, save_name = "plot", **kwargs):
         self.update_axes_info(**kwargs)
         subplot_axis = self.subplot_axis
         color_axis = self.color_axis
@@ -812,17 +814,18 @@ class Hasty_plotter():
         num_subplots = data.shape[subplot_axis]
         num_colors = data.shape[color_axis]
         len_x_axis = data.shape[x_axis]
-
+        
         if self.x_vals is not None and self.x_ticks is None:
             self.x_ticks = self.x_vals
             
         if self.x_vals is None:
-            self.x_vals = n.arange(num_xs)
+            self.x_vals = n.arange(len_x_axis)
 
         data = data.transpose(self.trial_axis, subplot_axis, color_axis, x_axis, self.time_axis)
-        mean = data[..., self.frames*self.start_t:self.frames*self.end_t].mean(axis = 4)
+        data_means_over_t = n.nanmean(data[...,int(self.start_t*self.frames): int(self.end_t*self.frames)], axis = 4)
+        
         if self.rm_outliers:
-            mean = reject_outliers(mean)
+            data_means_over_t = reject_outliers(data_means_over_t)
         plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trial_axis]} flies')    
         for plot_num in n.arange(num_subplots):
             ax = plt.subplot(num_subplots, 1, plot_num + 1)
@@ -836,18 +839,34 @@ class Hasty_plotter():
             if color_labels is not None:
                 patches =[mpatches.Patch(color = "C" + str(color), label = str(color_labels[color])) for color in n.arange(num_colors)]
                 plt.legend(title = self.legend_title, handles=patches)
-            offset = 0    
+            offset = 0.02    
             for color in n.arange(num_colors):
                 
                 if regression:
-                    xs = n.hstack(n.array([self.x_vals]*mean.shape[0]))
-                    ys = n.hstack(mean[:, plot_num, color])
+                    xs = n.hstack(n.array([self.x_vals]*data_means_over_t.shape[0]))
+                    mean_no_nans = n.nan_to_num(data_means_over_t)
+                    ys = n.hstack(mean_no_nans[:, plot_num, color])
                     slope, intercept, r_value, p_value, std_err = stats.linregress(xs, ys)
+                    stat_results = n.array([slope, intercept, r_value, r_value**2, p_value, std_err]).astype(str)
+                    stat_labels = n.array(["slope", "intercept", "r_value", "Rsquared", "p_value", "std_err"])
+                    print_list = n.vstack([stat_labels, stat_results]).T.tolist()
+                    print(f"lin regression stats for {color_labels[color]}")
+                    action = [print(f"{item[0]}:{item[1]}") for item in print_list]
                     plt.plot(xs, intercept + slope*xs, 'r', label='fitted line', color = "C" + str(color), linewidth =2.0)
                    
-                for trial in mean:
+                for trial in data_means_over_t:
                     rgb_colors = n.array(plt.rcParams['axes.prop_cycle'].by_key()['color'])
                     rgb_color = n.hstack([rgb_colors[color], [0.65]])
                     plt.scatter(self.x_vals + offset , trial[plot_num, color], color = rgb_color, s = 8)
                 offset += 0.1    
+
+        if save_fig:
+            save_figure(plt, save_name)
+
+        plt.show(block=False)
         
+    def save_figure(plot, save_name = None):
+        save_name = save_name + ".svg"
+        plt.tight_layout()
+        plt.savefig(save_name, format = "svg")
+                
