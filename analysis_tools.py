@@ -420,7 +420,7 @@ class Condition():
 
 class Array_builder():
     ''' builds an array given condition objects in the correct order. trial_len_type can be 'mean', 'bot_std', '2bot_std'. for mean, 50% of trials will be longer and 50% will be shorter. bot std means that 68% trials will be longer. 2bot_std means that 95% trials will be longer '''
-    def __init__(self, conditions, data_dir = './', raw_channels = [0,1,2,3], frame_flash_chans = [], trial_len_type = 'mean'):
+    def __init__(self, conditions, data_dir = './', raw_channels = [0,1,2,3], frame_flash_chans = [], trial_len_type = 'mean', print_trial_lens = False):
         conditions.sort(key=lambda x: x.light_num) # sort conditions based on light num
         self.conditions = conditions
         self.num_tests =  n.array([len(condition.elements) for condition in self.conditions]).prod()
@@ -429,7 +429,10 @@ class Array_builder():
         self.raw_channels = raw_channels
         self.frame_flash_chans = frame_flash_chans
         self.get_data()
-                
+        if print_trial_lens:
+            print(f"mean trial len:{self.trial_lens_mean}")
+            print(f"std trial len:{self.trial_lens_std}")
+        
     def get_data(self):
         self.d = WBA_trials(self.data_dir, self.num_tests, n.arange(len(self.conditions))+ 2, frame_flash_chans = self.frame_flash_chans)
         trial_lens = n.array([trial.ends-trial.starts for trial in self.d])
