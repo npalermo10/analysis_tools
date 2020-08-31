@@ -864,11 +864,11 @@ class Hasty_plotter():
                 offset += 0.1    
 
         if save_fig:
-            save_figure(plt, save_name)
+            self.save_figure(plt, save_name)
 
         plt.show(block=False)
         
-    def save_figure(plot, save_name = None):
+    def save_figure(self,plot, save_name = None):
         save_name = save_name + ".svg"
         plt.tight_layout()
         plt.savefig(save_name, format = "svg")
