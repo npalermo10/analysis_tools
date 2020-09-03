@@ -524,70 +524,74 @@ class Data_handler():
             
 class Hasty_plotter():
     ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing. If you want to put in data that is already time averaged, then just make sure you expand_dims on it so that it has a time axis which is size 1. '''
-    def __init__(self, data, trial_axis = 0,  time_axis = None, plot_title= None, starting_fig_num = 0, color_axis = None, color_labels = None, color_list = None, subplot_axis = None, subplot_labels = None,  x_axis = None, figure_axis = None,  legend_title = None, start_t = 0, end_t = 1, x_vals = None, x_ticks = None, x_label = None, y_axis = None, y_label = None,  y_vals = None, y_ticks = None, rm_outliers = False):
+    def __init__(self, data, axes = [], plot_title= None, starting_fig_num = 0, figure_axis = None,  legend_title = None, response_label = None,  rm_outliers = False):
         assert len(data.shape) >= 3, 'Data must be at least 3 dimensions to plot.'
-        self.time_axis = time_axis
+        assert len(data.shape) == len(axes), 'Dimensions of data must match number of axes'
         self.data = data
-        
-        self.trial_axis = trial_axis
-        self.color_axis = color_axis
-        self.color_labels = color_labels
-        self.color_list = color_list
-        self.x_axis = x_axis
-        self.x_vals = x_vals
-        self.x_ticks = x_ticks
-        self.x_label = x_label
-        self.y_axis = y_axis
-        self.y_label = y_label
-        self.y_vals = y_vals
-        self.y_ticks = y_ticks
-        self.subplot_axis = subplot_axis
-        self.subplot_labels = subplot_labels
-        self.figure_axis = figure_axis
-        self.legend_title = legend_title
-        self.start_t = start_t
-        self.end_t = end_t
-        if time_axis == None:
-            self.time_axis = len(data.shape) -1
+        self.axes = axes
+        self.set_axes()
         self.plot_title = plot_title
+        self.response_label = response_label
         self.rm_outliers = rm_outliers
-        self.num_trials = self.data.shape[trial_axis]
+        self.num_trials = self.data.shape[self.trial_axis]
         self.frames = self.data.shape[self.time_axis]
         self.starting_fig_num = starting_fig_num # so you can make a new hasty plotter object that won't override figs from another
         self.figs = []
 
-    def update_axes_info(self, **kwargs):
-        orig_axes_info = {'subplot_axis' : self.subplot_axis,
-                          'subplot_labels' : self.subplot_labels,
-                          'color_axis' : self.color_axis,
-                          'color_labels' : self.color_labels,
-                          'x_axis' : self.x_axis,
-                          'x_label': self.x_label,
-        }
-        for kwarg in kwargs:
-            if kwarg == 'subplot_axis':
-                if 'subplot_labels' not in kwargs:
-                    if kwargs['subplot_axis'] == orig_axes_info['color_axis']:
-                        self.subplot_labels = orig_axes_info['color_labels']
-                    if kwargs['subplot_axis'] == orig_axes_info['x_axis']:
-                        self.subplot_labels = orig_axes_info['x_label']
-                self.subplot_axis = kwargs['subplot_axis']
-            if kwarg == 'color_axis':
-                if 'color_labels' not in kwargs:
-                    if kwargs['color_axis'] == orig_axes_info['subplot_axis']:
-                        self.color_labels = orig_axes_info['subplot_labels']
-                    if kwargs['color_axis'] == orig_axes_info['x_axis']:
-                        self.color_labels = orig_axes_info['x_label']
-                self.color_axis = kwargs['color_axis']
-            if kwarg == 'x_axis':
-                if 'x_label' not in kwargs:
-                    if kwargs['x_axis'] == orig_axes_info['subplot_axis']:
-                        self.x_labels = orig_axes_info['subplot_labels']
-                    if kwargs['x_axis'] == orig_axes_info['color_axis']:
-                        self.x_labels = orig_axes_info['color_labels']
-                self.x_axis = kwargs['x_axis']
-                    
-    
+
+    def set_axes(self):
+        self.trial_axis = None
+        self.time_axis = None
+        
+        self.color_axis = None
+        self.color_labels = None
+        self.color_list = None
+        
+        self.subplot_axis = None
+        self.subplot_labels = None
+        
+        self.x_axis = None
+        self.x_label = None
+        self.x_vals = None
+        self.x_ticks = None
+        
+        self.y_axis = None
+        self.y_label = None
+        self.y_vals = None
+        self.y_ticks = None
+        
+        for axis in self.axes:
+            ax_type = axis.ax_type
+            if ax_type == "trial":
+                self.trial_axis = axis.pos
+            elif ax_type == "time":
+                self.time_axis = axis.pos
+                self.time_label = axis.name 
+                self.start_t = axis.start_t
+                self.end_t = axis.end_t
+            elif ax_type == "color":
+                self.color_axis = axis.pos
+                self.legend_title = axis.name
+                self.color_labels = axis.element_labels
+                if hasattr(axis, 'color_list'):
+                    self.color_list = axis.color_list
+                else:
+                    self.color_list = None
+            elif ax_type == "subplot":
+                self.subplot_axis = axis.pos
+                self.subplot_labels = axis.element_labels
+            elif ax_type == "x":
+                self.x_axis = axis.pos
+                self.x_label = axis.name
+                self.x_vals = axis.vals
+                self.x_ticks = axis.ticks
+            elif ax_type == "y":
+                self.y_axis = axis.pos
+                self.y_label = axis.name
+                self.y_vals = axis.vals
+                self.y_ticks = axis.ticks
+              
+
     def eq_ylims(self, fig_ind = 0, y_max= None, y_min = None):
         if y_max is None:
             y_max = max(ax.get_ylim()[1] for ax in self.figs[fig_ind].axes)
@@ -597,8 +601,7 @@ class Hasty_plotter():
         for ax in self.figs[fig_ind].axes:
             ax.set_ylim([y_min, y_max])
             
-    def plot_time_series(self, **kwargs):
-        self.update_axes_info(**kwargs)
+    def plot_time_series(self):
         subplot_axis = self.subplot_axis
         subplot_labels = self.subplot_labels
         color_axis = self.color_axis
@@ -649,7 +652,6 @@ class Hasty_plotter():
                     plt.legend(title = self.legend_title, handles=patches)
         
     def plot_mean_resp(self, save_fig= False, save_name="plot", **kwargs):
-        self.update_axes_info(**kwargs)
         subplot_axis = self.subplot_axis
         color_axis = self.color_axis
         trial_axis = self.trial_axis
@@ -703,7 +705,7 @@ class Hasty_plotter():
         plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trial_axis]} flies')    
         for plot_num in n.arange(num_subplots):
             ax = plt.subplot(num_subplots, 1, plot_num + 1)
-            if self.subplot_labels:
+            if self.subplot_labels is not None:
                 ax.title.set_text(self.subplot_labels[plot_num])
             plt.axhline(0, color = 'k', linestyle = '--')
             plt.axvline(0, color = 'k', linestyle = '--')
@@ -719,9 +721,17 @@ class Hasty_plotter():
                 patches =[mpatches.Patch(color = colors[color], label = str(self.color_labels[color])) for color in n.arange(num_colors)]
                 plt.legend(title = self.legend_title, handles=patches)
             for color in n.arange(num_colors):
-                plt.errorbar(self.x_vals + offset, mean[plot_num, color], yerr = sd_err[plot_num, color], marker = 'o', ms = 9.0, color = colors[color])
-                offset += (self.x_vals[1:] - self.x_vals[:-1]).mean()/num_xs*0.2
-        
+                curr_offset = 0
+                if len(self.x_vals) > 1:
+                    curr_offset = self.x_vals + offset
+                else:
+                    curr_offset = offset + 0.01
+                plt.errorbar(curr_offset, mean[plot_num, color], yerr = sd_err[plot_num, color], marker = 'o', ms = 9.0, color = colors[color])
+                if len(self.x_vals) > 1:
+                    offset += (self.x_vals[1:] - self.x_vals[:-1]).mean()/num_xs*0.2
+                else:
+                    offset += 0.02
+                    
         if save_fig:
             save_name = save_name + ".svg"
             plt.tight_layout()
@@ -729,7 +739,6 @@ class Hasty_plotter():
         plt.show(block=False)
                 
     def plot_mean_resp_heatmap(self,  center_zero = False, cmap = 'viridis', **kwargs):
-        self.update_axes_info(**kwargs)
         subplot_axis = self.subplot_axis
         color_axis = self.color_axis
         trial_axis = self.trial_axis
@@ -873,3 +882,19 @@ class Hasty_plotter():
         plt.tight_layout()
         plt.savefig(save_name, format = "svg")
                 
+class Axis():
+    def __init__(self, pos = None, ax_type = None, name=None, element_labels= None, start_t = 0, end_t = 1, vals = None, ticks = None, color_list = None):
+        '''ax_types include: trial, color, x, y, time, figure (not implemented yet)'''
+        self.pos = pos
+        self.ax_type = ax_type
+        if ax_type != "trial" and ax_type != 'time':
+            self.name = name
+            self.element_labels = element_labels
+            self.vals = vals
+            self.ticks = ticks
+            self.color_list = color_list
+        if ax_type == "time":
+           self.name = name
+           self.start_t = start_t
+           self.end_t = end_t
+        
