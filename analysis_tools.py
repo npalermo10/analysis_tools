@@ -524,25 +524,30 @@ class Data_handler():
             
 class Hasty_plotter():
     ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing. If you want to put in data that is already time averaged, then just make sure you expand_dims on it so that it has a time axis which is size 1. '''
-    def __init__(self, data, axes = [], plot_title= None, starting_fig_num = 0, figure_axis = None,  legend_title = None, response_label = None,  rm_outliers = False):
-        assert len(data.shape) >= 3, 'Data must be at least 3 dimensions to plot.'
-        assert len(data.shape) == len(axes), 'Dimensions of data must match number of axes'
-        self.data = data
+    def __init__(self, axes = [], plot_title= None, starting_fig_num = 0, figure_axis = None,  legend_title = None, response_label = None,  rm_outliers = False):
         self.axes = axes
-        self.set_axes()
+        self.set_data_axes(axes)
         self.plot_title = plot_title
         self.response_label = response_label
         self.rm_outliers = rm_outliers
-        self.num_trials = self.data.shape[self.trial_axis]
-        self.frames = self.data.shape[self.time_axis]
         self.starting_fig_num = starting_fig_num # so you can make a new hasty plotter object that won't override figs from another
         self.figs = []
 
-
-    def set_axes(self):
+    def set_data(self, data):
+        self.data = data
+        assert len(data.shape) >= 3, 'Data must be at least 3 dimensions to plot.'
+        assert len(data.shape) == len(self.axes), 'Dimensions of data must match number of axes'
+        axes_types = [axis.ax_type for axis in self.axes]
+        if 'time' not in axes_types:
+            self.data = n.expand_dims(self.data, axis = -1)
+            self.start_t = 0
+            self.end_t = 1
+            self.time_axis = len(self.data.shape) -1
+        self.num_trials = self.data.shape[self.trial_axis]
+        self.frames = self.data.shape[self.time_axis]
         
+    def set_data_axes(self, axes):
         self.trial_axis, self.time_axis,self.color_axis, self.color_labels, self.color_list, self.subplot_axis, self.subplot_labels, self.x_axis, self.x_label, self.x_vals, self.x_ticks, self.y_axis, self.y_label, self.y_vals, self.y_ticks = [None] * 15
-        
         for axis in self.axes:
             ax_type = axis.ax_type
             if ax_type == "trial":
@@ -688,7 +693,7 @@ class Hasty_plotter():
             if self.x_ticks is not None:
                 plt.xticks(self.x_vals, self.x_ticks)
             plt.xlabel(self.x_label)
-            plt.ylabel(self.y_label)
+            plt.ylabel(self.response_label)
             colors = ["C" + str(color) for color in n.arange(num_colors)]
             if self.color_list is not None:
                 colors = self.color_list
@@ -773,7 +778,6 @@ class Hasty_plotter():
                plt.ylabel(y_label)
         
     def plot_indv_mean_resps(self, regression = False, save_fig= False, save_name = "plot", **kwargs):
-        self.update_axes_info(**kwargs)
         subplot_axis = self.subplot_axis
         color_axis = self.color_axis
         trial_axis = self.trial_axis
