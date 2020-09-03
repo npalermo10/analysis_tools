@@ -540,25 +540,8 @@ class Hasty_plotter():
 
 
     def set_axes(self):
-        self.trial_axis = None
-        self.time_axis = None
         
-        self.color_axis = None
-        self.color_labels = None
-        self.color_list = None
-        
-        self.subplot_axis = None
-        self.subplot_labels = None
-        
-        self.x_axis = None
-        self.x_label = None
-        self.x_vals = None
-        self.x_ticks = None
-        
-        self.y_axis = None
-        self.y_label = None
-        self.y_vals = None
-        self.y_ticks = None
+        self.trial_axis, self.time_axis,self.color_axis, self.color_labels, self.color_list, self.subplot_axis, self.subplot_labels, self.x_axis, self.x_label, self.x_vals, self.x_ticks, self.y_axis, self.y_label, self.y_vals, self.y_ticks = [None] * 15
         
         for axis in self.axes:
             ax_type = axis.ax_type
@@ -651,23 +634,15 @@ class Hasty_plotter():
                     patches =[mpatches.Patch(color = "C" + str(color), label = str(color_labels[color])) for color in n.arange(num_colors)]
                     plt.legend(title = self.legend_title, handles=patches)
         
-    def plot_mean_resp(self, save_fig= False, save_name="plot", **kwargs):
+    def plot_mean_resp(self, save_fig= False, save_name="plot"):
         subplot_axis = self.subplot_axis
+        subplot_labels = self.subplot_labels
         color_axis = self.color_axis
         trial_axis = self.trial_axis
         x_axis = self.x_axis
         time_axis = self.time_axis
 
-        if subplot_axis is None and self.subplot_axis is not None:
-            subplot_axis = self.subplot_axis
-
-        if color_axis is None and self.color_axis is not None:
-            color_axis = self.color_axis
-
-        if x_axis is None and self.x_axis is not None:
-            x_axis = self.x_axis
-            
-        num_axes_in_args = (color_axis is not None or self.color_axis is not None) + (x_axis is not None or self.x_axis is not None) + (subplot_axis is not None or self.subplot_axis is not None)
+        num_axes_in_args = (color_axis is not None) + (x_axis is not None) + (subplot_axis is not None)
         assert len(self.data.shape) == num_axes_in_args + 2, f'Incorrect number of axes arguments. There should only be {len(self.data.shape)} and you have {num_axes_in_args}'
         fig = plt.figure(len(self.figs) + self.starting_fig_num)
         self.figs.append(fig)
