@@ -567,7 +567,12 @@ class Hasty_plotter():
                     self.color_list = None
             elif ax_type == "subplot":
                 self.subplot_axis = axis.pos
-                self.subplot_labels = axis.element_labels
+                subplot_labels = []
+                for element_label in axis.element_labels:
+                    to_add = f'{axis.name}: {element_label}'
+                    subplot_labels.append(to_add)
+                self.subplot_labels =subplot_labels
+                
             elif ax_type == "x":
                 self.x_axis = axis.pos
                 self.x_label = axis.name
@@ -744,7 +749,17 @@ class Hasty_plotter():
             subplot_axis = len(self.data.shape)
             data = n.expand_dims(self.data, axis = -1)
             data = data.transpose(trial_axis, subplot_axis, y_axis, x_axis, time_axis)
-        mean = data.mean(axis = 0)[..., self.frames*self.start_t:self.frames*self.end_t].mean(axis = -1)    
+        data_means_over_t = n.nanmean(data[...,int(self.start_t*self.frames): int(self.end_t*self.frames)], axis = 4)
+        if self.rm_outliers:
+            data_means_over_t = reject_outliers(data_means_over_t)
+            
+        mean = n.nanmean(data_means_over_t, axis = 0)
+        sd_err = n.nanstd(data_means_over_t, axis= 0)/n.sqrt(data_means_over_t.shape[trial_axis])
+        #flip the y axis!
+        mean = mean[:,::-1]
+        sd_err = sd_err[:,::-1]
+        
+        # mean = data.mean(axis = 0)[..., self.frames*self.start_t:self.frames*self.end_t].mean(axis = -1)    
         num_subplots = mean.shape[0]    
         
         plot_max = mean.max()
@@ -774,8 +789,9 @@ class Hasty_plotter():
 
             if self.x_label:
                plt.xlabel(self.x_label) 
-            if y_label:
-               plt.ylabel(y_label)
+            if self.y_label:
+               plt.ylabel(self.y_label)
+        plt.show(block=False)
         
     def plot_indv_mean_resps(self, regression = False, save_fig= False, save_name = "plot", **kwargs):
         subplot_axis = self.subplot_axis
@@ -863,7 +879,7 @@ class Hasty_plotter():
                 
 class Axis():
     def __init__(self, pos = None, ax_type = None, name=None, element_labels= None, start_t = 0, end_t = 1, vals = None, ticks = None, color_list = None):
-        '''ax_types include: trial, color, x, y, time, figure (not implemented yet)'''
+        '''ax_types include: trial, color, x, y, subplot, time, figure (not implemented yet)'''
         self.pos = pos
         self.ax_type = ax_type
         if ax_type != "trial" and ax_type != 'time':
