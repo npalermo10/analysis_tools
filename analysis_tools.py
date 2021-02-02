@@ -931,8 +931,13 @@ class Axis():
             self.vals = vals
             self.ticks = ticks
             self.color_list = color_list
+            if ax_type == 'color' and ticks is not None and element_labels is None:
+                print("Check your color axis and make sure that it has element_labels instead of ticks.")
+            if ax_type == 'x' and element_labels is not None and ticks is None:
+                print("Check you x axis object and make sure that it has ticks instead of element_labels.")
         if ax_type == "time":
            self.name = name
            self.start_t = start_t
            self.end_t = end_t
         
+            
