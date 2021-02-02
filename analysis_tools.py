@@ -554,11 +554,12 @@ class Data_handler():
             
 class Hasty_plotter():
     ''' this class should speed up common tasks such as displaying every plot or means of all the plots. It is not intended to be for final production analyzing. If you want to put in data that is already time averaged, then just make sure you expand_dims on it so that it has a time axis which is size 1. '''
-    def __init__(self, axes = [], plot_title= None, starting_fig_num = 0, figure_axis = None,  legend_title = None, response_label = None,  rm_outliers = False):
+    def __init__(self, axes = [], plot_title= None, starting_fig_num = 0, figure_axis = None,  legend_title = None, response_label = None,  v_line = True, rm_outliers = False):
         self.axes = axes
         self.set_data_axes(axes)
         self.plot_title = plot_title
         self.response_label = response_label
+        self.v_line = v_line
         self.rm_outliers = rm_outliers
         self.starting_fig_num = starting_fig_num # so you can make a new hasty plotter object that won't override figs from another
         self.figs = []
