@@ -747,13 +747,12 @@ class Hasty_plotter():
                     offset += (self.x_vals[1:] - self.x_vals[:-1]).mean()/num_xs*0.2
                 else:
                     offset += 0.02
-                    
         if save_fig:
-            save_name = save_name + ".svg"
-            plt.tight_layout()
-            plt.savefig(save_name, format = "svg")
+            self.save_figure(plt, save_name)
+     
+    def show_plots(self):
         plt.show(block=False)
-                
+        
     def plot_mean_resp_heatmap(self,  center_zero = False, cmap = 'viridis', **kwargs):
         subplot_axis = self.subplot_axis
         color_axis = self.color_axis
@@ -858,54 +857,68 @@ class Hasty_plotter():
         if self.x_vals is None:
             self.x_vals = n.arange(len_x_axis)
 
+        self.x_vals = n.array(self.x_vals)
         data = data.transpose(self.trial_axis, subplot_axis, color_axis, x_axis, self.time_axis)
         data_means_over_t = n.nanmean(data[...,int(self.start_t*self.frames): int(self.end_t*self.frames)], axis = 4)
         
         if self.rm_outliers:
             data_means_over_t = reject_outliers(data_means_over_t)
+    
+        mean = n.nanmean(data_means_over_t, axis = trial_axis)
+        sd_err = n.nanstd(data_means_over_t, axis= trial_axis)/n.sqrt(data_means_over_t.shape[trial_axis])
         plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trial_axis]} flies')    
         for plot_num in n.arange(num_subplots):
             ax = plt.subplot(num_subplots, 1, plot_num + 1)
             if self.subplot_labels:
                 ax.title.set_text(self.subplot_labels[plot_num])
             plt.axhline(0, color = 'k', linestyle = '--')
-            plt.axvline(0, color = 'k', linestyle = '--')
+            if self.v_line:
+                plt.axvline(0, color = 'k', linestyle = '--')
             offset = 0.02
-            plt.xticks(n.arange(len_x_axis), self.x_ticks)
+            plt.xticks(self.x_vals, self.x_ticks)
             plt.xlabel(self.x_label)
+            plt.ylabel(self.response_label)
+            rgb_colors = n.array(plt.rcParams['axes.prop_cycle'].by_key()['color'])
+            if self.color_list is not None:
+                rgb_colors = self.color_list
             if color_labels is not None:
-                patches =[mpatches.Patch(color = "C" + str(color), label = str(color_labels[color])) for color in n.arange(num_colors)]
+                patches =[mpatches.Patch(facecolor = rgb_colors[color], label = str(color_labels[color])) for color in n.arange(num_colors)]
                 plt.legend(title = self.legend_title, handles=patches)
-            offset = 0.02    
+            offset = 0.02
             for color in n.arange(num_colors):
-                
+                rgb_color = n.hstack([rgb_colors[color], [0.4]])
                 if regression:
-                    xs = n.hstack(n.array([self.x_vals]*data_means_over_t.shape[0]))
+                    xs = n.hstack(n.array([self.x_ticks]*data_means_over_t.shape[0]))
                     mean_no_nans = n.nan_to_num(data_means_over_t)
                     ys = n.hstack(mean_no_nans[:, plot_num, color])
                     slope, intercept, r_value, p_value, std_err = stats.linregress(xs, ys)
                     stat_results = n.array([slope, intercept, r_value, r_value**2, p_value, std_err]).astype(str)
                     stat_labels = n.array(["slope", "intercept", "r_value", "Rsquared", "p_value", "std_err"])
                     print_list = n.vstack([stat_labels, stat_results]).T.tolist()
-                    print(f"lin regression stats for {color_labels[color]}")
+                    print("-------------------------")
+                    if color_labels is not None:
+                        print(f"lin regression stats for {self.plot_title}:{color_labels[color]}")
+                    else:
+                        print(f"lin regression stats for {self.plot_title}")
                     action = [print(f"{item[0]}:{item[1]}") for item in print_list]
-                    plt.plot(xs, intercept + slope*xs, 'r', label='fitted line', color = "C" + str(color), linewidth =2.0)
-                   
+                    print("-------------------------")
+                    plt.plot(xs, intercept + slope*xs, 'r', label='fitted line', color = rgb_color, linewidth =1.0, linestyle = '--')
                 for trial in data_means_over_t:
-                    rgb_colors = n.array(plt.rcParams['axes.prop_cycle'].by_key()['color'])
-                    rgb_color = n.hstack([rgb_colors[color], [0.65]])
-                    plt.scatter(self.x_vals + offset , trial[plot_num, color], color = rgb_color, s = 8)
+                    min_x_val_diff = n.diff(self.x_vals).min()
+                    random_offset = random.uniform(-min_x_val_diff/10,min_x_val_diff/10)
+                    plt.scatter(self.x_vals + random_offset , trial[plot_num, color], color = rgb_color, s = 8)
+                if with_means:
+                    rgb_color[3] = 1
+                    plt.errorbar(self.x_vals, mean[plot_num, color], yerr = sd_err[plot_num, color], marker = 'o', ms = 9.0, color = rgb_color, linestyle ='', elinewidth = 3)                    
                 offset += 0.1    
 
         if save_fig:
             self.save_figure(plt, save_name)
 
-        plt.show(block=False)
-        
     def save_figure(self,plot, save_name = None):
         save_name = save_name + ".svg"
-        plt.tight_layout()
-        plt.savefig(save_name, format = "svg")
+        plot.tight_layout()
+        plot.savefig(save_name, format = "svg")
                 
 class Axis():
     def __init__(self, pos = None, ax_type = None, name=None, element_labels= None, start_t = 0, end_t = 1, vals = None, ticks = None, color_list = None):
