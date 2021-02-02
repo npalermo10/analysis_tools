@@ -6,6 +6,8 @@ import matplotlib.patches as mpatches
 from sklearn import datasets, linear_model
 from sklearn.metrics import mean_squared_error, r2_score
 from scipy import stats
+import random
+import math
 
 blue, green, yellow, orange, red, purple = [(0.30, 0.45, 0.69), (0.33, 0.66, 0.41), (0.83, 0.74, 0.37), (0.78, 0.50, 0.16), (0.77, 0.31, 0.32), (0.44, 0.22, 0.78)]
 
