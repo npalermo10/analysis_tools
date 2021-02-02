@@ -446,16 +446,17 @@ class Condition():
         self.elements = elements
         self.light_num = light_num
         self.light_mod = light_mod
-
+                
 class Array_builder():
     ''' builds an array given condition objects in the correct order. trial_len_type can be 'mean', 'bot_std', '2bot_std'. for mean, 50% of trials will be longer and 50% will be shorter. bot std means that 68% trials will be longer. 2bot_std means that 95% trials will be longer '''
-    def __init__(self, conditions, data_dir = './', raw_channels = [0,1,2,3], frame_flash_chans = [], trial_len_type = 'mean', print_trial_lens = False):
+    def __init__(self, conditions, data_dir = './', raw_channels = [2,3,4,5], frame_flash_chans = [], trial_len_type = 'mean', print_trial_lens = False):
         conditions.sort(key=lambda x: x.light_num) # sort conditions based on light num
         self.conditions = conditions
         self.num_tests =  n.array([len(condition.elements) for condition in self.conditions]).prod()
         self.data_dir = data_dir
         self.trial_len_type = trial_len_type
         self.raw_channels = raw_channels
+        self.raw_channel_data = None
         self.frame_flash_chans = frame_flash_chans
         self.get_data()
         if print_trial_lens:
@@ -820,9 +821,8 @@ class Hasty_plotter():
                plt.xlabel(self.x_label) 
             if self.y_label:
                plt.ylabel(self.y_label)
-        plt.show(block=False)
-        
-    def plot_indv_mean_resps(self, regression = False, save_fig= False, save_name = "plot", **kwargs):
+                
+    def plot_indv_mean_resps(self, regression = False, with_means = False, save_fig= False, save_name = "plot", **kwargs):
         subplot_axis = self.subplot_axis
         color_axis = self.color_axis
         trial_axis = self.trial_axis
