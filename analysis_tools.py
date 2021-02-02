@@ -670,9 +670,9 @@ class Hasty_plotter():
                 std_err2plot = n.squeeze(sd_err[plot_num, color])
                 plt.plot(mean2plot)
                 plt.fill_between(n.arange(int(self.frames*self.end_t) - int(self.frames*self.start_t)), mean2plot + std_err2plot,  mean2plot- std_err2plot, alpha = 0.3)
-                if color_labels is not None:
-                    patches =[mpatches.Patch(color = "C" + str(color), label = str(color_labels[color])) for color in n.arange(num_colors)]
-                    plt.legend(title = self.legend_title, handles=patches)
+            if color_labels is not None:
+                patches =[mpatches.Patch(color = "C" + str(color), label = str(color_labels[color])) for color in n.arange(num_colors)]
+                plt.legend(title = self.legend_title, handles=patches)
         
     def plot_mean_resp(self, save_fig= False, save_name="plot"):
         subplot_axis = self.subplot_axis
