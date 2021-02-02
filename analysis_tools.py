@@ -78,6 +78,33 @@ def reject_outliers(data, m = 3):
     print(f"{num_outliers} outliers removed out of {tot_data}")
     return data
 
+def get_wn_seq_from_lights(data, nvals=n.array([0.5, 1.0]), duration=5, thresh=.08):
+    d = data
+    d -= d.mean()
+    d /= d.max()
+    ptp = d.ptp()
+    hi_inds = n.where(d>(d.mean() + ptp*thresh))[0]
+    # find the boundaries of above thresh regions (skip more than one index)
+    d_hi_inds = n.ediff1d(hi_inds, to_begin=duration, to_end=duration)
+    strts = n.where(d_hi_inds>=duration)[0]
+    strt_inds = n.take(hi_inds, strts[:-1])
+    # one point is higher than its neighbors, return one index for each region
+    
+    peaks = n.array([d[strt_ind:strt_ind + duration].max() for strt_ind in strt_inds])
+    # how best to sort into nval groups?
+    nvals=n.array([0.5, 1.0])
+    centroids, vals = clust.kmeans2(peaks, nvals)
+    # vvals_hi_inds = n.ediff1d(vvals, to_end=0)
+    # d_seq = vvals_hi_inds
+    
+    vvals = n.choose(vals, centroids.argsort()+ 1)
+    vvals[vvals ==1] = -1
+    vvals[vvals ==2] = 1
+    d_seq = vvals
+    zero_arr = n.zeros(d.shape)
+    zero_arr[strt_inds] = d_seq
+    return zero_arr
+
 class WBA_trial():
     '''A class to read, hold and analyze wba data from wing beat analyzers'''
 
