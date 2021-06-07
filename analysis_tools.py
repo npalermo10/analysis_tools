@@ -72,7 +72,7 @@ def reject_outliers(data, m = 3):
     d = n.abs(data - medns_exp)
     mdev = n.expand_dims(n.median(d, axis = 0), 0).repeat(data.shape[0], axis = 0)
     s = d/mdev
-    data[s>m] = 0
+    data[s>m] = n.nan
     num_outliers = data[s>m].shape[0]
     tot_data = data.flatten().shape[0]
     print(f"{num_outliers} outliers removed out of {tot_data}")
@@ -452,6 +452,7 @@ class Array_builder():
     def __init__(self, conditions, data_dir = './', raw_channels = [2,3,4,5], frame_flash_chans = [], trial_len_type = 'mean', print_trial_lens = False):
         conditions.sort(key=lambda x: x.light_num) # sort conditions based on light num
         self.conditions = conditions
+        self.index_lights_nums = n.array([condition.light_num for condition in self.conditions])
         self.num_tests =  n.array([len(condition.elements) for condition in self.conditions]).prod()
         self.data_dir = data_dir
         self.trial_len_type = trial_len_type
@@ -464,7 +465,7 @@ class Array_builder():
             print(f"std trial len:{self.trial_lens_std}")
         
     def get_data(self):
-        self.d = WBA_trials(self.data_dir, self.num_tests, n.arange(len(self.conditions))+ 2, frame_flash_chans = self.frame_flash_chans)
+        self.d = WBA_trials(self.data_dir, self.num_tests, self.index_lights_nums+ 2, frame_flash_chans = self.frame_flash_chans)
         trial_lens = n.array([trial.ends-trial.starts for trial in self.d])
         trial_lens_mean = trial_lens.mean()
         self.trial_lens_mean = trial_lens_mean
@@ -576,6 +577,9 @@ class Hasty_plotter():
             self.time_axis = len(self.data.shape) -1
         self.num_trials = self.data.shape[self.trial_axis]
         self.frames = self.data.shape[self.time_axis]
+
+    def set_color_list(self, color_list):
+        self.color_list = color_list
         
     def set_data_axes(self, axes):
         self.trial_axis, self.time_axis,self.color_axis, self.color_labels, self.color_list, self.subplot_axis, self.subplot_labels, self.x_axis, self.x_label, self.x_vals, self.x_ticks, self.y_axis, self.y_label, self.y_vals, self.y_ticks = [None] * 15
@@ -625,7 +629,7 @@ class Hasty_plotter():
         for ax in self.figs[fig_ind].axes:
             ax.set_ylim([y_min, y_max])
             
-    def plot_time_series(self):
+    def plot_time_series(self, save_fig = False, save_name = "plot"):
         subplot_axis = self.subplot_axis
         subplot_labels = self.subplot_labels
         color_axis = self.color_axis
@@ -674,7 +678,9 @@ class Hasty_plotter():
             if color_labels is not None:
                 patches =[mpatches.Patch(color = "C" + str(color), label = str(color_labels[color])) for color in n.arange(num_colors)]
                 plt.legend(title = self.legend_title, handles=patches)
-        
+        if save_fig:
+            self.save_figure(plt, save_name)
+     
     def plot_mean_resp(self, save_fig= False, save_name="plot"):
         subplot_axis = self.subplot_axis
         subplot_labels = self.subplot_labels
@@ -889,9 +895,12 @@ class Hasty_plotter():
             for color in n.arange(num_colors):
                 rgb_color = n.hstack([rgb_colors[color], [0.4]])
                 if regression:
-                    xs = n.hstack(n.array([self.x_ticks]*data_means_over_t.shape[0]))
-                    mean_no_nans = n.nan_to_num(data_means_over_t)
-                    ys = n.hstack(mean_no_nans[:, plot_num, color])
+                    xs_w_nans = n.hstack(n.array([self.x_vals]*data_means_over_t.shape[0]))
+                    # mean_no_nans = n.nan_to_num(data_means_over_t)
+                    ys_w_nans = n.hstack(data_means_over_t[:, plot_num, color])
+                    non_nan_vals = n.invert(n.isnan(ys_w_nans))
+                    xs = xs_w_nans[non_nan_vals]
+                    ys = ys_w_nans[non_nan_vals]
                     slope, intercept, r_value, p_value, std_err = stats.linregress(xs, ys)
                     stat_results = n.array([slope, intercept, r_value, r_value**2, p_value, std_err]).astype(str)
                     stat_labels = n.array(["slope", "intercept", "r_value", "Rsquared", "p_value", "std_err"])
@@ -904,6 +913,308 @@ class Hasty_plotter():
                     action = [print(f"{item[0]}:{item[1]}") for item in print_list]
                     print("-------------------------")
                     plt.plot(xs, intercept + slope*xs, 'r', label='fitted line', color = rgb_color, linewidth =1.0, linestyle = '--')
+                for trial in data_means_over_t:
+                    min_x_val_diff = n.diff(self.x_vals).min()
+                    random_offset = random.uniform(-min_x_val_diff/10,min_x_val_diff/10)
+                    plt.scatter(self.x_vals + random_offset , trial[plot_num, color], color = rgb_color, s = 8)
+                if with_means:
+                    rgb_color[3] = 1
+                    plt.errorbar(self.x_vals, mean[plot_num, color], yerr = sd_err[plot_num, color], marker = 'o', ms = 9.0, color = rgb_color, linestyle ='', elinewidth = 3)                    
+                offset += 0.1    
+
+        if save_fig:
+            self.save_figure(plt, save_name)
+
+    def plot_violin(self, regression = False, with_means = False, save_fig= False, save_name = "plot", **kwargs):
+        subplot_axis = self.subplot_axis
+        color_axis = self.color_axis
+        trial_axis = self.trial_axis
+        x_axis = self.x_axis
+        time_axis = self.time_axis
+        color_labels = self.color_labels
+        
+        num_axes_in_args = (color_axis is not None) + (x_axis is not None) + (subplot_axis is not None)
+        assert len(self.data.shape) == num_axes_in_args + 2, f'Incorrect number of axes arguments. There should only be {len(self.data.shape)} and you have {num_axes_in_args}'
+        fig = plt.figure(len(self.figs) + self.starting_fig_num)
+        self.figs.append(fig)
+        data = self.data
+        if subplot_axis is None and self.subplot_axis is None:
+            subplot_axis = len(data.shape)
+            data = n.expand_dims(data, axis = -1)
+            
+        if color_axis is None and self.color_axis is None:
+            color_axis = len(data.shape)
+            data = n.expand_dims(data, axis = -1)            
+
+        if x_axis is None and self.x_axis is None:
+            color_axis = len(data.shape)
+            data = n.expand_dims(data, axis = -1)            
+
+        num_subplots = data.shape[subplot_axis]
+        num_colors = data.shape[color_axis]
+        len_x_axis = data.shape[x_axis]
+        
+        if self.x_vals is not None and self.x_ticks is None:
+            self.x_ticks = self.x_vals
+            
+        if self.x_vals is None:
+            self.x_vals = n.arange(len_x_axis)
+
+        self.x_vals = n.array(self.x_vals)
+        data = data.transpose(self.trial_axis, subplot_axis, color_axis, x_axis, self.time_axis)
+        data_means_over_t = n.nanmean(data[...,int(self.start_t*self.frames): int(self.end_t*self.frames)], axis = 4)
+        
+        if self.rm_outliers:
+            data_means_over_t = reject_outliers(data_means_over_t)
+    
+        mean = n.nanmean(data_means_over_t, axis = trial_axis)
+        sd_err = n.nanstd(data_means_over_t, axis= trial_axis)/n.sqrt(data_means_over_t.shape[trial_axis])
+        plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trial_axis]} flies')    
+        for plot_num in n.arange(num_subplots):
+            ax = plt.subplot(num_subplots, 1, plot_num + 1)
+            if self.subplot_labels:
+                ax.title.set_text(self.subplot_labels[plot_num])
+            plt.axhline(0, color = 'k', linestyle = '--')
+            if self.v_line:
+                plt.axvline(0, color = 'k', linestyle = '--')
+            offset = 0.02
+            plt.xticks(self.x_vals, self.x_ticks)
+            plt.xlabel(self.x_label)
+            plt.ylabel(self.response_label)
+            rgb_colors = n.array(plt.rcParams['axes.prop_cycle'].by_key()['color'])
+            if self.color_list is not None:
+                rgb_colors = self.color_list
+            if color_labels is not None:
+                patches =[mpatches.Patch(facecolor = rgb_colors[color], label = str(color_labels[color])) for color in n.arange(num_colors)]
+                plt.legend(title = self.legend_title, handles=patches)
+            offset = 0.02
+            for color in n.arange(num_colors):
+                rgb_color = n.hstack([rgb_colors[color], [0.4]])
+                xs_w_nans = n.hstack(n.array([self.x_vals]*data_means_over_t.shape[0]))
+                ys_w_nans = n.hstack(data_means_over_t[:, plot_num, color])
+                non_nan_vals = n.invert(n.isnan(ys_w_nans))
+                xs = xs_w_nans[non_nan_vals]
+                ys = ys_w_nans[non_nan_vals]
+                x_bins = n.digitize(xs, self.x_vals) -1
+                blank_ys_list = [[] for i in range(len(self.x_vals))]
+                for i_xbin, xbin in enumerate(x_bins):
+                    blank_ys_list[xbin].append(ys[i_xbin])
+                plt.violinplot(blank_ys_list, self.x_vals, widths =n.diff(self.x_vals).min()/1.5, showmedians = True, showextrema=True)
+                if regression:
+                    slope, intercept, r_value, p_value, std_err = stats.linregress(xs, ys)
+                    stat_results = n.array([slope, intercept, r_value, r_value**2, p_value, std_err]).astype(str)
+                    stat_labels = n.array(["slope", "intercept", "r_value", "Rsquared", "p_value", "std_err"])
+                    print_list = n.vstack([stat_labels, stat_results]).T.tolist()
+                    print("-------------------------")
+                    if color_labels is not None:
+                        print(f"lin regression stats for {self.plot_title}:{color_labels[color]}")
+                    else:
+                        print(f"lin regression stats for {self.plot_title}")
+                    action = [print(f"{item[0]}:{item[1]}") for item in print_list]
+                    print("-------------------------")
+                    plt.plot(xs, intercept + slope*xs, 'r', label='fitted line', color = rgb_color, linewidth =1.0, linestyle = '--')
+                offset += 0.1    
+
+        if save_fig:
+            self.save_figure(plt, save_name)
+
+
+    def plot_violin_logplot(self, regression = False, with_means = False, save_fig= False, save_name = "plot", **kwargs):
+        subplot_axis = self.subplot_axis
+        color_axis = self.color_axis
+        trial_axis = self.trial_axis
+        x_axis = self.x_axis
+        time_axis = self.time_axis
+        color_labels = self.color_labels
+        
+        num_axes_in_args = (color_axis is not None) + (x_axis is not None) + (subplot_axis is not None)
+        assert len(self.data.shape) == num_axes_in_args + 2, f'Incorrect number of axes arguments. There should only be {len(self.data.shape)} and you have {num_axes_in_args}'
+        fig = plt.figure(len(self.figs) + self.starting_fig_num)
+        self.figs.append(fig)
+        data = self.data
+        if subplot_axis is None and self.subplot_axis is None:
+            subplot_axis = len(data.shape)
+            data = n.expand_dims(data, axis = -1)
+            
+        if color_axis is None and self.color_axis is None:
+            color_axis = len(data.shape)
+            data = n.expand_dims(data, axis = -1)            
+
+        if x_axis is None and self.x_axis is None:
+            color_axis = len(data.shape)
+            data = n.expand_dims(data, axis = -1)            
+
+        num_subplots = data.shape[subplot_axis]
+        num_colors = data.shape[color_axis]
+        len_x_axis = data.shape[x_axis]
+        
+        if self.x_vals is not None and self.x_ticks is None:
+            self.x_ticks = self.x_vals
+            
+        if self.x_vals is None:
+            self.x_vals = n.arange(len_x_axis)
+
+        self.x_vals = n.array(self.x_vals)
+        data = data.transpose(self.trial_axis, subplot_axis, color_axis, x_axis, self.time_axis)
+        data_means_over_t = n.nanmean(data[...,int(self.start_t*self.frames): int(self.end_t*self.frames)], axis = 4)
+        
+        if self.rm_outliers:
+            data_means_over_t = reject_outliers(data_means_over_t)
+    
+        mean = n.nanmean(data_means_over_t, axis = trial_axis)
+        sd_err = n.nanstd(data_means_over_t, axis= trial_axis)/n.sqrt(data_means_over_t.shape[trial_axis])
+        plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trial_axis]} flies')    
+        for plot_num in n.arange(num_subplots):
+            ax = plt.subplot(num_subplots, 1, plot_num + 1)
+            if self.subplot_labels:
+                ax.title.set_text(self.subplot_labels[plot_num])
+            plt.axhline(0, color = 'k', linestyle = '--')
+            if self.v_line:
+                plt.axvline(0, color = 'k', linestyle = '--')
+            offset = 0.02
+            plt.xticks(self.x_vals, self.x_ticks)
+            plt.xlabel(self.x_label)
+            plt.ylabel(self.response_label)
+            rgb_colors = n.array(plt.rcParams['axes.prop_cycle'].by_key()['color'])
+            if self.color_list is not None:
+                rgb_colors = self.color_list
+            if color_labels is not None:
+                patches =[mpatches.Patch(facecolor = rgb_colors[color], label = str(color_labels[color])) for color in n.arange(num_colors)]
+                plt.legend(title = self.legend_title, handles=patches)
+            offset = 0.02
+            for color in n.arange(num_colors):
+                rgb_color = n.hstack([rgb_colors[color], [0.4]])
+                xs_w_nans = n.hstack(n.array([self.x_vals]*data_means_over_t.shape[0]))
+                ys_w_nans = n.hstack(data_means_over_t[:, plot_num, color])
+                non_nan_vals = n.invert(n.isnan(ys_w_nans))
+                xs = xs_w_nans[non_nan_vals]
+                ys = ys_w_nans[non_nan_vals]
+                x_bins = n.digitize(xs, self.x_vals) -1
+                blank_ys_list = [[] for i in range(len(self.x_vals))]
+                for i_xbin, xbin in enumerate(x_bins):
+                    blank_ys_list[xbin].append(ys[i_xbin])
+                plt.violinplot(blank_ys_list, self.x_vals, widths =n.diff(self.x_vals).min()/1.5, showmedians = True, showextrema=True)
+                if regression:
+                    slope, intercept, r_value, p_value, std_err = stats.linregress(xs, n.log(ys))
+                    stat_results = n.array([slope, intercept, r_value, r_value**2, p_value, std_err]).astype(str)
+                    stat_labels = n.array(["slope", "intercept", "r_value", "Rsquared", "p_value", "std_err"])
+                    print_list = n.vstack([stat_labels, stat_results]).T.tolist()
+                    print("-------------------------")
+                    if color_labels is not None:
+                        print(f"log linear regression stats for {self.plot_title}:{color_labels[color]}")
+                    else:
+                        print(f"log linear regression stats for {self.plot_title}")
+                    action = [print(f"{item[0]}:{item[1]}") for item in print_list]
+                    print("-------------------------")
+                    # coefficients = n.polyfit(xs,n.log(ys) , 1)
+                    # polynomial = n.poly1d(coefficients)
+                    # ys = polynomial(ys)
+                    # plt.plot(xs, n.exp(intercept + slope*xs), 'r', label='fitted line', color = rgb_color, linewidth =1.0, linestyle = '--')
+                    
+                    coefficients = n.polyfit(xs, n.log(ys), 1)
+                    polynomial = n.poly1d(coefficients)
+                    print(f"best fit polynomial: e^({polynomial})")
+                    ys = polynomial(xs)
+                    plt.plot(xs, n.exp(ys), 'r', label='fitted line', color = rgb_color, linewidth =1.0, linestyle = '--')
+                offset += 0.1    
+
+        if save_fig:
+            self.save_figure(plt, save_name)
+
+    def plot_indv_mean_resps_logplot(self, regression = False, with_means = False, save_fig= False, save_name = "plot", **kwargs):
+        subplot_axis = self.subplot_axis
+        color_axis = self.color_axis
+        trial_axis = self.trial_axis
+        x_axis = self.x_axis
+        time_axis = self.time_axis
+        color_labels = self.color_labels
+        
+        num_axes_in_args = (color_axis is not None) + (x_axis is not None) + (subplot_axis is not None)
+        assert len(self.data.shape) == num_axes_in_args + 2, f'Incorrect number of axes arguments. There should only be {len(self.data.shape)} and you have {num_axes_in_args}'
+        fig = plt.figure(len(self.figs) + self.starting_fig_num)
+        self.figs.append(fig)
+        data = self.data
+        if subplot_axis is None and self.subplot_axis is None:
+            subplot_axis = len(data.shape)
+            data = n.expand_dims(data, axis = -1)
+            
+        if color_axis is None and self.color_axis is None:
+            color_axis = len(data.shape)
+            data = n.expand_dims(data, axis = -1)            
+
+        if x_axis is None and self.x_axis is None:
+            color_axis = len(data.shape)
+            data = n.expand_dims(data, axis = -1)            
+
+        num_subplots = data.shape[subplot_axis]
+        num_colors = data.shape[color_axis]
+        len_x_axis = data.shape[x_axis]
+        
+        if self.x_vals is not None and self.x_ticks is None:
+            self.x_ticks = self.x_vals
+            
+        if self.x_vals is None:
+            self.x_vals = n.arange(len_x_axis)
+
+        self.x_vals = n.array(self.x_vals)
+        data = data.transpose(self.trial_axis, subplot_axis, color_axis, x_axis, self.time_axis)
+        data_means_over_t = n.nanmean(data[...,int(self.start_t*self.frames): int(self.end_t*self.frames)], axis = 4)
+        
+        if self.rm_outliers:
+            data_means_over_t = reject_outliers(data_means_over_t)
+    
+        mean = n.nanmean(data_means_over_t, axis = trial_axis)
+        sd_err = n.nanstd(data_means_over_t, axis= trial_axis)/n.sqrt(data_means_over_t.shape[trial_axis])
+        plt.suptitle(f'{self.plot_title} - {self.data.shape[self.trial_axis]} flies')    
+        for plot_num in n.arange(num_subplots):
+            ax = plt.subplot(num_subplots, 1, plot_num + 1)
+            if self.subplot_labels:
+                ax.title.set_text(self.subplot_labels[plot_num])
+            plt.axhline(0, color = 'k', linestyle = '--')
+            if self.v_line:
+                plt.axvline(0, color = 'k', linestyle = '--')
+            offset = 0.02
+            plt.xticks(self.x_vals, self.x_ticks)
+            plt.xlabel(self.x_label)
+            plt.ylabel(self.response_label)
+            ax.set_yscale("log", nonposy='clip')
+            rgb_colors = n.array(plt.rcParams['axes.prop_cycle'].by_key()['color'])
+            if self.color_list is not None:
+                rgb_colors = self.color_list
+            if color_labels is not None:
+                patches =[mpatches.Patch(facecolor = rgb_colors[color], label = str(color_labels[color])) for color in n.arange(num_colors)]
+                plt.legend(title = self.legend_title, handles=patches)
+            offset = 0.02
+            for color in n.arange(num_colors):
+                rgb_color = n.hstack([rgb_colors[color], [0.4]])
+                if regression:
+                    xs_w_nans = n.hstack(n.array([self.x_vals]*data_means_over_t.shape[0]))
+                    # mean_no_nans = n.nan_to_num(data_means_over_t)
+                    ys_w_nans = n.hstack(data_means_over_t[:, plot_num, color])
+                    non_nan_vals = n.invert(n.isnan(ys_w_nans))
+                    xs = xs_w_nans[non_nan_vals]
+                    ys = ys_w_nans[non_nan_vals]
+                    slope, intercept, r_value, p_value, std_err = stats.linregress(xs, n.log(ys))
+                    stat_results = n.array([slope, intercept, r_value, r_value**2, p_value, std_err]).astype(str)
+                    stat_labels = n.array(["slope", "intercept", "r_value", "Rsquared", "p_value", "std_err"])
+                    print_list = n.vstack([stat_labels, stat_results]).T.tolist()
+                    print("-------------------------")
+                    if color_labels is not None:
+                        print(f"log linear regression stats for {self.plot_title}:{color_labels[color]}")
+                    else:
+                        print(f"log linear regression stats for {self.plot_title}")
+                    action = [print(f"{item[0]}:{item[1]}") for item in print_list]
+                    print("-------------------------")
+                    # coefficients = n.polyfit(xs,n.log(ys) , 1)
+                    # polynomial = n.poly1d(coefficients)
+                    # ys = polynomial(ys)
+                    # plt.plot(xs, n.exp(intercept + slope*xs), 'r', label='fitted line', color = rgb_color, linewidth =1.0, linestyle = '--')
+                    
+                    coefficients = n.polyfit(xs, n.log(ys), 1)
+                    polynomial = n.poly1d(coefficients)
+                    print(f"best fit polynomial: e^({polynomial})")
+                    ys = polynomial(xs)
+                    plt.plot(xs, n.exp(ys), 'r', label='fitted line', color = rgb_color, linewidth =1.0, linestyle = '--')
                 for trial in data_means_over_t:
                     min_x_val_diff = n.diff(self.x_vals).min()
                     random_offset = random.uniform(-min_x_val_diff/10,min_x_val_diff/10)
@@ -942,3 +1253,52 @@ class Axis():
            self.end_t = end_t
         
             
+def symlogspace(col, n_cuts, dtype='float64'):
+    """
+    Splits a data range into log-like bins but with 0 and negative values
+    taken into account. Log cuts start from the closest value to zero.
+    
+    Parameters
+    ----------
+    col: df column or array
+    n_cuts: int
+            Number of cuts to perform
+    dtype: dtype of the outputs
+    """
+    min_val = col.min()
+    max_val = col.max()
+
+    # compute negative and positive range
+    min_pos = col[col > 0].min() if not n.isnan(col[col > 0].min()) else 0
+    max_neg = col[col < 0].max() if not n.isnan(col[col < 0].max()) else 0
+    neg_range = [-min_val, -max_neg] if min_val < max_neg else None
+    pos_range = [max(min_val, min_pos), max_val] if max_val > min_pos else None
+
+    # If min value is 0 create a bin for it
+    zero_cut = [min_val] if max_neg <= min_val < min_pos else []
+
+    n_cuts = n_cuts - len(zero_cut)
+
+    neg_range_size = (neg_range[0] - neg_range[1]) if neg_range is not None else 0
+    pos_range_size = (pos_range[1] - pos_range[0]) if pos_range is not None else 0
+    range_size = neg_range_size + pos_range_size
+
+    n_pos_cuts = max(2, int(round(n_cuts * (pos_range_size / range_size)))) if range_size > 0 and pos_range_size > 0 else 0
+    # Ensure each range has at least 2 edges if it's not empty
+    n_neg_cuts = max(2, n_cuts - n_pos_cuts) if neg_range_size > 0 else 0   
+    # In case n_pos_cuts + n_neg_cuts > n_cuts this is needed
+    n_pos_cuts = max(2, n_cuts - n_neg_cuts) if pos_range_size > 0 else 0
+
+    neg_cuts = []
+    if n_neg_cuts > 0:
+        neg_cuts = list(-n.geomspace(neg_range[0], neg_range[1], n_neg_cuts, dtype=dtype))
+
+    pos_cuts = []
+    if n_pos_cuts > 0:
+        pos_cuts = list(n.geomspace(pos_range[0], pos_range[1], n_pos_cuts, dtype=dtype))
+
+    result = neg_cuts + zero_cut + pos_cuts
+    # Add 0.1% to the edges to include min and max
+    result[0] = min(result[0] * 1.1, result[0] * 0.9)
+    result[-1] = result[-1] * 1.1
+    return result
