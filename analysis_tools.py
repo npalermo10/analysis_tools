@@ -330,7 +330,9 @@ class WBA_trials ():
         self.fns.sort()
         self.num_trials = len(self.fns)
         self.exp_name = os.path.basename(os.path.abspath(data_dir))
-
+        self.raw_data_list = []
+        for fn in self.fns:
+            self.raw_data_list.append(n.load(fn))
         trials = []
         for fn in self.fns:
             try:
@@ -466,6 +468,7 @@ class Array_builder():
         
     def get_data(self):
         self.d = WBA_trials(self.data_dir, self.num_tests, self.index_lights_nums+ 2, frame_flash_chans = self.frame_flash_chans)
+        self.raw_data_list = self.d.raw_data_list
         trial_lens = n.array([trial.ends-trial.starts for trial in self.d])
         trial_lens_mean = trial_lens.mean()
         self.trial_lens_mean = trial_lens_mean
