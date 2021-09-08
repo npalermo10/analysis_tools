@@ -340,7 +340,12 @@ class WBA_trials ():
                 print(fn)
             except:
                 print('X ' + fn + ' X')
-        self.trials = [trial for trial in trials if trial.num_tests == num_tests]
+        self.trials = []
+        for trial in trials:
+            if trial.num_tests == num_tests:
+                self.trials.append(trial)
+            if trial.num_tests != num_tests:
+                print(f"{trial}: Check your conditions. You are asking for {num_tests} tests but there are {trial.num_tests}")
         self.num_trials = len(self.trials)
         self.set_return()
 
