@@ -572,6 +572,7 @@ class Hasty_plotter():
         self.rm_outliers = rm_outliers
         self.starting_fig_num = starting_fig_num # so you can make a new hasty plotter object that won't override figs from another
         self.figs = []
+        self.heatmaps = []
 
     def set_data(self, data):
         self.data = data
@@ -636,6 +637,13 @@ class Hasty_plotter():
     
         for ax in self.figs[fig_ind].axes:
             ax.set_ylim([y_min, y_max])
+
+    def eq_clims_heatmaps(self):
+        vmax = max(ax.axes[0].get_images()[0].get_clim()[1] for ax in self.heatmaps)
+        vmin = min(ax.axes[0].get_images()[0].get_clim()[0] for ax in self.heatmaps)
+        for fig in self.heatmaps:
+            for ax in fig.axes[::2]:
+                ax.get_images()[0].set_clim(vmin, vmax)
             
     def plot_time_series(self, save_fig = False, save_name = "plot"):
         subplot_axis = self.subplot_axis
@@ -786,6 +794,7 @@ class Hasty_plotter():
         assert y_axis, "can't plot heatmap without y axis"
         fig = plt.figure(len(self.figs) + self.starting_fig_num)
         self.figs.append(fig)
+        self.heatmaps.append(fig)
         data = []
                     
         if subplot_axis is not None:
